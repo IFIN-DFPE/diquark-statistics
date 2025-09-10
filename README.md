@@ -26,6 +26,7 @@ The exclusion run code can be executed by calling the [run_roofit.sh](run_roofit
  - _mass_: $M_{S_{uu}}$ expressed in TeV. Only used if **_runType = point_**
  - _nPseudoExps_: the number of pseudo-experiments to be run.
  - _nToys_: the number of toys generated for each pseudo-experiment.
+
 When running the program, please keep in mind to change the path of the log file in the bash script, otherwise overwriting may happen. For further details, please refer to the code.
 
 
@@ -39,7 +40,7 @@ The Upper Limits run can be executed by calling [run_roostats.sh](run_roostats.s
 ```
 ./run_roostats.sh
 ```
-When running this macro, please keep in mind to change the path of the log file in the bash script, otherwise overwriting might happen.
+When running this macro, please keep in mind to change the path of the log file in the bash script, otherwise overwriting might happen. For further details, please refer to the code.
 
 
 ## Plots
