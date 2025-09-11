@@ -13,10 +13,6 @@ In file included from input_line_8:1:
 /home/daniel/Work/diquark/diquark/roostats_limits_run.cc:256:89: warning: invalid conversion specifier 'U' [-Wformat-invalid-specifier]
     HypoTestInverterPlot* plot = new HypoTestInverterPlot("HTI_Result_Plot", Form("95\% Upper Limit scan on #mu for M_{S} = %.2f TeV;#mu;CL_{S}", point.m_s), result);
                                                                                      ~~~^
-/home/daniel/Work/diquark/diquark/roostats_limits_run.cc:301:68: warning: if statement has empty body [-Wempty-body]
-    if(std::filesystem::create_directories("results/mChi2/graphs"));
-                                                                   ^
-/home/daniel/Work/diquark/diquark/roostats_limits_run.cc:301:68: note: put the semicolon on a separate line to silence this warning
 Reading data from: results/mChi2/signal_yields/sig_bkg_D900.csv
 
 === Summary by Mass Points ===
@@ -38,7 +34,7 @@ Edm   = 1.002608077690327949e-06
 Nfcn  = 31
 B0_true	  = 1.09e+01	 +/-  8.96e-01	(limited)
 S0_true	  = 2.84e+01	 +/-  1.55e-02	(limited)
-AsymptoticCalculator::EvaluateNLL -  value = 3.37e+01	fit time : Real time 0:00:00, CP time 0.030
+AsymptoticCalculator::EvaluateNLL -  value = 3.37e+01	fit time : Real time 0:00:00, CP time 0.020
 MakeAsimov: Setting poi mu to a constant value = 0.00e+00
 MakeAsimov: doing a conditional fit for finding best nuisance values 
 Minuit2Minimizer: Minimize with max-calls 1000 convergence for edm < 1.00e+00 strategy 1
@@ -86,75 +82,6 @@ AsymptoticCalculator::EvaluateNLL -  value = -5.65e+00 for poi fixed at = 0.00e+
 [#0] WARNING:Minimization -- AsymptoticCalculator:  Found a negative value of the qmu - retry to do the unconditional fit 
 [#0] WARNING:Minimization -- AsymptoticCalculator:  Found a better unconditional minimum  old NLL = -7.67e+00 old muHat 1.00e+00
 [#0] WARNING:Minimization -- AsymptoticCalculator:  New minimum  found for                           NLL = -8.24e+00    muHat  0.00e+00
-
-Mass point: 7.00 TeV
-95% upper limit: 1.15e-01
-Expected upper limits, in the B (alternative) model:
-Expected limit (-2 sig): 1.67e-01
-Expected limit (-1 sig): 2.00e-01
-Expected limit (median): 2.92e-01
-Expected limit (+1 sig): 4.24e-01
-Expected limit (+2 sig): 6.07e-01
-
-Mass point: 7.25 TeV
-95% upper limit: 1.15e-01
-Expected upper limits, in the B (alternative) model:
-Expected limit (-2 sig): 1.67e-01
-Expected limit (-1 sig): 2.00e-01
-Expected limit (median): 2.92e-01
-Expected limit (+1 sig): 4.24e-01
-Expected limit (+2 sig): 6.07e-01
-
-Mass point: 7.50 TeV
-95% upper limit: 1.90e-01
-Expected upper limits, in the B (alternative) model:
-Expected limit (-2 sig): 1.88e-01
-Expected limit (-1 sig): 2.50e-01
-Expected limit (median): 3.52e-01
-Expected limit (+1 sig): 5.07e-01
-Expected limit (+2 sig): 7.45e-01
-
-Mass point: 7.75 TeV
-95% upper limit: 2.84e-01
-Expected upper limits, in the B (alternative) model:
-Expected limit (-2 sig): 2.87e-01
-Expected limit (-1 sig): 3.89e-01
-Expected limit (median): 5.62e-01
-Expected limit (+1 sig): 8.29e-01
-Expected limit (+2 sig): 1.21e+00
-
-Mass point: 8.00 TeV
-95% upper limit: 4.31e-01
-Expected upper limits, in the B (alternative) model:
-Expected limit (-2 sig): 3.98e-01
-Expected limit (-1 sig): 5.60e-01
-Expected limit (median): 8.22e-01
-Expected limit (+1 sig): 1.26e+00
-Expected limit (+2 sig): 1.86e+00
-
-Mass point: 8.25 TeV
-95% upper limit: 7.13e-01
-Expected upper limits, in the B (alternative) model:
-Expected limit (-2 sig): 5.10e-01
-Expected limit (-1 sig): 7.28e-01
-Expected limit (median): 1.10e+00
-Expected limit (+1 sig): 1.71e+00
-Expected limit (+2 sig): 2.61e+00
-
-Mass point: 8.50 TeV
-95% upper limit: 1.24e+00
-Expected upper limits, in the B (alternative) model:
-Expected limit (-2 sig): 6.84e-01
-Expected limit (-1 sig): 9.88e-01
-Expected limit (median): 1.52e+00
-Expected limit (+1 sig): 2.44e+00
-Expected limit (+2 sig): 3.81e+00
-
-Mass point: 8.75 TeV
-95% upper limit: 2.23e+00
-Expected upper limits, in the B (alternative) model:
-Expected limit (-2 sig): 9.23e-01
-Expected limit (-1 sig): 1.37e+00
-Expected limit (median): 2.18e+00
-Expected limit (+1 sig): 3.60e+00
-Expected limit (+2 sig): 1.00e+01
+[#0] WARNING:Minimization -- AsymptoticCalculator:  Found a negative value of the qmu - retry to do the unconditional fit 
+[#0] WARNING:Minimization -- AsymptoticCalculator:  Found a better unconditional minimum  old NLL = -8.24e+00 old muHat 0.00e+00
+[#0] WARNING:Minimization -- AsymptoticCalculator:  New minimum  found for                           NLL = -8.24e+00    muHat  6.06e-02

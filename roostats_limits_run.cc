@@ -239,7 +239,7 @@ vector<double> point_exclusion(DataPoint point, TFile* output_file) {
     inverter->SetConfidenceLevel(0.95);
     inverter->UseCLs(true);
     inverter->SetVerbose(false);
-    inverter->SetFixedScan(50, 0, 5); 
+    inverter->SetFixedScan(100, 0, 6); 
     // inverter->SetAutoScan();
 
     HypoTestInverterResult* result = inverter->GetInterval();
@@ -298,25 +298,21 @@ void roostats_limits_run(const char* inputFile = nullptr) {
     vector<DataPoint> data = read_CSV(inputFile);
     vector<vector <double>> limits;
 
-    if(std::filesystem::create_directories("results/mChi2/graphs"))
-    ;
-    TFile* output_file = TFile::Open("results/mChi2/graphs/mu95_limits.root", "RECREATE");
+    TFile* output_file = TFile::Open("results/mChi2/roostats_results/out_D900/mu95_limits.root", "RECREATE");
+    ofstream upper_file("results/mChi2/roostats_results/out_D900/upper_limits.csv");
 
     for(auto point : data) 
         limits.push_back(point_exclusion(point, output_file));
+
+    upper_file << "M_S,obs_med,sig2_lo,sig1_lo,exp_med,sig1_hi,sig2_hi\n";
     
     // Print results
     for(int i = 0; i < limits.size(); i++) {
-        cout << "\nMass point: " << std::fixed << std::setprecision(2) << data[i].m_s << std::scientific << " TeV\n";
-        cout << "95% upper limit: " << limits[i][0] << '\n';
-        cout << "Expected upper limits, in the B (alternative) model:\n";
-        cout << "Expected limit (-2 sig): " << limits[i][1] << '\n';
-        cout << "Expected limit (-1 sig): " << limits[i][2] << '\n';
-        cout << "Expected limit (median): " << limits[i][3] << '\n';
-        cout << "Expected limit (+1 sig): " << limits[i][4] << '\n';
-        cout << "Expected limit (+2 sig): " << limits[i][5] << '\n';    
+        upper_file << std::fixed << std::setprecision(2) << data[i].m_s << std::scientific;
+        upper_file << Form(",%f,%f,%f,%f,%f,%f\n", limits[i][0], limits[i][1], limits[i][2], limits[i][3], limits[i][4], limits[i][5]);
     }
 
+    upper_file.close();
     output_file->Write();
     output_file->Close();
 

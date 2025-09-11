@@ -66,16 +66,16 @@ void plot_cls() {
     TLatex* label = new TLatex(masses.front()-0.1, 0.055, "95\% C.L.");
 
     gMedian->SetLineColor(kBlack);
-    gMedian->SetLineStyle(9);
+    gMedian->SetLineStyle(2);
     gMedian->SetLineWidth(2);
-    gSig1->SetFillColor(kGreen);
-    gSig2->SetTitle("CL_{S} scan;M_{S} [TeV/c^{2}];CL_{S}");
-    gSig2->SetFillColor(kYellow);
-    line_lim->SetLineColor(kRed);
+    gSig1->SetFillColor(38);
+    gSig2->SetTitle("CL_{S} scan;M_{S} [TeV];CL_{S}");
+    gSig2->SetFillColor(kOrange-4);
+    line_lim->SetLineColor(46);
     line_lim->SetLineWidth(2);
     line_lim->SetLineStyle(1);
     label->SetTextSize(0.03);
-    label->SetTextColor(kRed);
+    label->SetTextColor(46);
 
     gSig2->Draw("A3");
     gSig1->Draw("3 SAME");

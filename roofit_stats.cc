@@ -105,22 +105,6 @@ struct DataPoint {
 };
 
 
-
-/*
-    Vectors holding:
-        - the mass values
-        - the median expected values for the CLS
-        - the +-1 sigma intervals
-        - the +-2 sigma intervals
-*/
-std::vector<double> masses;
-std::vector<double> medians;
-std::vector<double> sig1_lo, sig1_hi;
-std::vector<double> sig2_lo, sig2_hi;
-
-
-
-
 // Value of the discriminator used in ML
 int discriminator;
 // Number of PSEUDOEXPERIMENTS. Recommend 100 at least, maybe 1000
@@ -256,7 +240,7 @@ std::vector<DataPoint> read_CSV(const char* inputFile) {
     Function that performs the statistical analysis and checks if the points are excluded or not
     As an argument, pass the DataPoint associated to a given mass of Suu
 */
-void analysisRun(DataPoint point) {
+void analysisRun(DataPoint point, std::ofstream &prob_file) {
 
     std::cout << Form("=== Running analysis for M_S = %.2f TeV ===\n", point.m_s);
 
@@ -348,8 +332,7 @@ void analysisRun(DataPoint point) {
 
     if(std::filesystem::create_directories(Form("results/mChi2/roofit_results/out_D%d", discriminator)))
     ;
-    TFile *output_file = TFile::Open(Form("results/mChi2/roofit_results/out_D%d/output_S%d.root", discriminator, int(point.m_s*100)), "RECREATE");
-    std::ofstream prob_file("results/mChi2/roofit_results/p_vals.txt");    
+    TFile *output_file = TFile::Open(Form("results/mChi2/roofit_results/out_D%d/output_S%d.root", discriminator, int(point.m_s*100)), "RECREATE");    
     // dsitributions of CLS, CLSB and CLB
     TH1D *hCLS = new TH1D("hCLS", "CLS", 100, 0., 1.);
     TH1D *hCLSB = new TH1D("hCLSB", "CLSB", 100, 0., 1.);
@@ -651,7 +634,7 @@ void analysisRun(DataPoint point) {
     }
     std::cout << std::endl;
     
-    prob_file << Form("Probability for q_0 > q_0^obs at M_s=%.2f: ", point.m_s) << std::scientific << nTotalSB/(nPseudoExps*nToys) << '\n';
+    prob_file << std::fixed << std::setprecision(2) << point.m_s << "," << std::setprecision(5) << std::scientific << nTotalSB/(nPseudoExps*nToys) << '\n';
     std::cout << std::fixed << std::setprecision(2);
 
     TCanvas *c_cls = new TCanvas("c_cls", "c_cls");
@@ -718,6 +701,8 @@ int main(int argc, char *argv[]) {
         discriminator = int(std::stod(config["discriminator"])*1000);
         const char* dataFile = Form("results/mChi2/signal_yields/sig_bkg_D%d.csv", discriminator);
         std::vector<DataPoint> data = read_CSV(dataFile);
+        std::ofstream prob_file(Form("results/mChi2/roofit_results/out_D%d/p_values.csv", discriminator));
+        prob_file << "M_S,p_value\n";
 
         // Initialize the number of pseudo-experiments and toys
         nPseudoExps = std::stoi(config["nPseudoExps"]);
@@ -728,7 +713,7 @@ int main(int argc, char *argv[]) {
             // Perform the analysis over the entire file
             std::cout << "Running full analysis over all data points\n\n";
             for(auto point : data)    
-                analysisRun(point);
+                analysisRun(point, prob_file);
         } 
         else if(config["runType"] == "point") {
             if(config["mass"] == "") {
@@ -744,7 +729,7 @@ int main(int argc, char *argv[]) {
                     size_t idx = std::distance(data.begin(), it);
                     // Perform the analysis only on the specified point
                     std::cout << "Running single point analysis\n\n";
-                    analysisRun(data[idx]);
+                    analysisRun(data[idx], prob_file);
                 }
                 else {
                     throw std::runtime_error("Error: Please input a valid mass point\n");
@@ -752,6 +737,8 @@ int main(int argc, char *argv[]) {
             }
         }
         else throw std::runtime_error("Error: Please specify a valid work mode for the program\n");
+
+        prob_file.close();
 
     }
     catch(const std::exception& exc) {
