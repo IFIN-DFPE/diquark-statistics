@@ -298,8 +298,8 @@ void roostats_limits_run(const char* inputFile = nullptr) {
     vector<DataPoint> data = read_CSV(inputFile);
     vector<vector <double>> limits;
 
-    TFile* output_file = TFile::Open("results/mChi2/roostats_results/out_D900/mu95_limits.root", "RECREATE");
-    ofstream upper_file("results/mChi2/roostats_results/out_D900/upper_limits.csv");
+    TFile* output_file = TFile::Open("results/mChi1_5/roostats_results/out_D900/mu95_limits.root", "RECREATE");
+    ofstream upper_file("results/mChi1_5/roostats_results/out_D900/upper_limits.csv");
 
     for(auto point : data) 
         limits.push_back(point_exclusion(point, output_file));

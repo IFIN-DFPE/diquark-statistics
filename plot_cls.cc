@@ -16,6 +16,7 @@
 #include "TLatex.h"
 #include "TFile.h"
 #include "TROOT.h"
+#include "TStyle.h"
 
 std::vector<double> masses;
 std::vector<double> medians;
@@ -26,9 +27,14 @@ std::vector<double> sig2_lo, sig2_hi;
 void plot_cls() {
 
     gROOT->SetBatch(1);
+    gStyle->SetTextFont(42);
+    gStyle->SetLabelFont(42, "XYZ");
+    gStyle->SetTitleFont(42, "XYZ");
+    gStyle->SetLegendFont(42);
+    gStyle->SetLabelSize(0.04, "XYZ");
 
     for(int i = 700; i <= 875; i += 25) {
-        TFile* in_file = TFile::Open(Form("results/mChi2/roofit_results/out_D900/output_S%d.root", i), "READ");
+        TFile* in_file = TFile::Open(Form("results/mChi1_5/roofit_results/out_D900/output_S%d.root", i), "READ");
         masses.push_back(double(i)/100);
 
         TH1F* hCLS = (TH1F*)in_file->Get("hCLS");
@@ -63,25 +69,29 @@ void plot_cls() {
     }
 
     TLine* line_lim = new TLine(gMedian->GetXaxis()->GetXmin(), 0.05, gMedian->GetXaxis()->GetXmax(), 0.05);
-    TLatex* label = new TLatex(masses.front()-0.1, 0.055, "95\% C.L.");
+    TLatex* label = new TLatex(masses.front()-0.05, 0.055, "95\% C.L.");
+    TLatex* chiMass = new TLatex(masses.front(), 0.7, "M_{#chi} = 1.5 TeV");
 
     gMedian->SetLineColor(kBlack);
     gMedian->SetLineStyle(2);
     gMedian->SetLineWidth(2);
     gSig1->SetFillColor(38);
-    gSig2->SetTitle("CL_{S} scan;M_{S} [TeV];CL_{S}");
+    gSig2->SetTitle(";M_{S} [TeV];CL_{S}");
     gSig2->SetFillColor(kOrange-4);
     line_lim->SetLineColor(46);
     line_lim->SetLineWidth(2);
     line_lim->SetLineStyle(1);
-    label->SetTextSize(0.03);
     label->SetTextColor(46);
+    label->SetTextSize(0.04);
+    chiMass->SetTextSize(0.04);
 
+    gSig2->GetYaxis()->SetRangeUser(0., 1.);
     gSig2->Draw("A3");
     gSig1->Draw("3 SAME");
     gMedian->Draw("L SAME");
     line_lim->Draw("SAME");
     label->Draw("SAME");
+    chiMass->Draw("SAME");
 
 
     TLegend* legend = new TLegend(0.15, 0.7, 0.4, 0.88);
@@ -89,12 +99,20 @@ void plot_cls() {
     legend->AddEntry(gSig1, "#pm1#sigma", "f");
     legend->AddEntry(gSig2, "#pm2#sigma", "f");
     legend->AddEntry(line_lim, "#alpha = 0.05", "l");
-    legend->Draw();
+    legend->SetTextSize(0.04);
+    legend->SetFillStyle(0);
+    legend->SetFillColor(0);
+    legend->SetLineStyle(0);
+    legend->SetLineColor(0);
+    
 
+    // c->SetGrid();
+    // c->RedrawAxis("g");
+    legend->Draw();
     c->Update();
     c->Draw();
-    if(std::filesystem::create_directories("results/mChi2/graphs"))
+    if(std::filesystem::create_directories("results/mChi1_5/graphs/out_D900"))
     ;
-    c->SaveAs("results/mChi2/graphs/cls_scan.pdf");
+    c->SaveAs("results/mChi1_5/graphs/out_D900/chi15_cls_scan.pdf");
 
 }

@@ -15,6 +15,7 @@
 #include "TLatex.h"
 #include "TFile.h"
 #include "TROOT.h"
+#include "TStyle.h"
 
 
 std::vector<double> masses;
@@ -53,18 +54,17 @@ void read_CSV(const char* inputFile) {
 
     csvFile.close();
 
-    // Print the read data for debugging
-    std::cout << "\n=== Summary by Mass Points ===\n";
-    std::cout << "M_s [TeV]\t"
-         << "p_val\n";
-    for (int i = 0 ; i < masses.size(); i++)
-        std::cout << std::fixed << std::setprecision(2) << masses[i] << "\t\t" << std::scientific << p_vals[i] << "\n";
-    std::cout << "\n";
-
 }
 
 
 void generate_plot() {
+
+    gROOT->SetBatch(1);
+    gStyle->SetTextFont(42);
+    gStyle->SetLabelFont(42, "XYZ");
+    gStyle->SetTitleFont(42, "XYZ");
+    gStyle->SetLegendFont(42);
+    gStyle->SetLabelSize(0.04, "XYZ");
 
     TCanvas* c = new TCanvas("c_pval", "Local p-values", 800, 600);
     c->SetLogy();
@@ -78,11 +78,11 @@ void generate_plot() {
 
     gP_val->Draw("APL");
     gP_val->GetXaxis()->SetRangeUser(6.8, 8.95);
-    gP_val->GetYaxis()->SetRangeUser(1e-6, 1.);
+    gP_val->GetYaxis()->SetRangeUser(5e-8, 1.);
 
     double x_min = 6.8;
     double x_max = 8.95;
-    for (int sigma = 1; sigma <= 4; ++sigma) {
+    for (int sigma = 1; sigma <= 5; ++sigma) {
         double z = sigma;
         double pval = 0.5 * TMath::Erfc(z / TMath::Sqrt2());
 
@@ -90,23 +90,27 @@ void generate_plot() {
         line->SetLineStyle(4);
         line->SetLineColor(46);
         line->SetLineWidth(3);
-        line->Draw();
+        line->Draw("SAME");
 
         // Add label
         TLatex *label = new TLatex(x_max + 0.005, pval, Form("%d#sigma", sigma));
-        label->SetTextSize(0.03);
+        label->SetTextSize(0.04);
         label->SetTextAlign(12);
         label->SetTextColor(46);
-        label->Draw();
+        label->Draw("SAME");
     }
+
+    TLatex* chiMass = new TLatex(8.4, 1e-6, "M_{#chi} = 1.5 TeV");
+    chiMass->SetTextSize(0.04);
+    chiMass->Draw("SAME");
 
     c->Update();
     c->Draw();
 
 
-    if(std::filesystem::create_directories("results/mChi2/graphs"))
+    if(std::filesystem::create_directories("results/mChi1_5/graphs/out_D900"))
     ;
-    c->SaveAs("results/mChi2/graphs/local_pvals.pdf");
+    c->SaveAs("results/mChi1_5/graphs/out_D900/chi15_local_pvals.pdf");
 
 
 }
@@ -117,7 +121,7 @@ void plot_pval() {
     gROOT->SetBatch(1);
 
     try{
-        const char* inputFile = "results/mChi2/roofit_results/out_D900/p_values.csv";
+        const char* inputFile = "results/mChi1_5/roofit_results/out_D900/p_values.csv";
 
         read_CSV(inputFile);
         generate_plot();

@@ -1,21 +1,0 @@
-Reading data from: results/mChi2/signal_yields/sig_bkg_D925.csv
-
-=== Summary by Mass Points ===
-M_s [TeV]	SIG			BKG
-7.00		2.83e+01 ± 1.13e-02	8.76e+00 ± 7.89e-01
-7.25		2.83e+01 ± 1.13e-02	8.76e+00 ± 7.89e-01
-7.50		1.83e+01 ± 1.12e-02	4.27e+00 ± 1.14e+00
-7.75		1.15e+01 ± 8.08e-03	2.34e+00 ± 8.40e-01
-8.00		7.18e+00 ± 7.53e-03	1.68e+00 ± 5.62e-01
-8.25		4.38e+00 ± 3.58e-03	8.06e-01 ± 2.76e-01
-8.50		2.62e+00 ± 1.40e-03	5.48e-01 ± 1.14e-01
-8.75		1.54e+00 ± 3.35e-04	2.05e-01 ± 7.10e-02
-
-Running single point analysis
-
-=== Running analysis for M_S = 7.00 TeV ===
- Ran pseudo-experiment 1/10: bkg toy 50/100 Duration: 0.12[s] Ran pseudo-experiment 1/10: bkg toy 100/100 Duration: 0.23[s] Ran pseudo-experiment 1/10: s+b toy 50/100 Duration: 0.34[s] Ran pseudo-experiment 1/10: s+b toy 100/100 Duration: 0.43[s] Ran pseudo-experiment 2/10: bkg toy 50/100 Duration: 0.55[s] Ran pseudo-experiment 2/10: bkg toy 100/100 Duration: 0.65[s] Ran pseudo-experiment 2/10: s+b toy 50/100 Duration: 0.77[s] Ran pseudo-experiment 2/10: s+b toy 100/100 Duration: 0.88[s] Ran pseudo-experiment 3/10: bkg toy 50/100 Duration: 0.99[s] Ran pseudo-experiment 3/10: bkg toy 100/100 Duration: 1.09[s] Ran pseudo-experiment 3/10: s+b toy 50/100 Duration: 1.21[s] Ran pseudo-experiment 3/10: s+b toy 100/100 Duration: 1.33[s] Ran pseudo-experiment 4/10: bkg toy 50/100 Duration: 1.44[s] Ran pseudo-experiment 4/10: bkg toy 100/100 Duration: 1.55[s] Ran pseudo-experiment 4/10: s+b toy 50/100 Duration: 1.66[s] Ran pseudo-experiment 4/10: s+b toy 100/100 Duration: 1.78[s] Ran pseudo-experiment 5/10: bkg toy 50/100 Duration: 1.89[s] Ran pseudo-experiment 5/10: bkg toy 100/100 Duration: 1.99[s] Ran pseudo-experiment 5/10: s+b toy 50/100 Duration: 2.10[s] Ran pseudo-experiment 5/10: s+b toy 100/100 Duration: 2.21[s] Ran pseudo-experiment 6/10: bkg toy 50/100 Duration: 2.32[s] Ran pseudo-experiment 6/10: bkg toy 100/100 Duration: 2.43[s] Ran pseudo-experiment 6/10: s+b toy 50/100 Duration: 2.54[s] Ran pseudo-experiment 6/10: s+b toy 100/100 Duration: 2.65[s] Ran pseudo-experiment 7/10: bkg toy 50/100 Duration: 2.76[s] Ran pseudo-experiment 7/10: bkg toy 100/100 Duration: 2.86[s] Ran pseudo-experiment 7/10: s+b toy 50/100 Duration: 2.98[s] Ran pseudo-experiment 7/10: s+b toy 100/100 Duration: 3.10[s] Ran pseudo-experiment 8/10: bkg toy 50/100 Duration: 3.21[s] Ran pseudo-experiment 8/10: bkg toy 100/100 Duration: 3.31[s] Ran pseudo-experiment 8/10: s+b toy 50/100 Duration: 3.42[s] Ran pseudo-experiment 8/10: s+b toy 100/100 Duration: 3.53[s] Ran pseudo-experiment 9/10: bkg toy 50/100 Duration: 3.64[s] Ran pseudo-experiment 9/10: bkg toy 100/100 Duration: 3.74[s] Ran pseudo-experiment 9/10: s+b toy 50/100 Duration: 3.85[s] Ran pseudo-experiment 9/10: s+b toy 100/100 Duration: 3.97[s] Ran pseudo-experiment 10/10: bkg toy 50/100 Duration: 4.08[s] Ran pseudo-experiment 10/10: bkg toy 100/100 Duration: 4.18[s] Ran pseudo-experiment 10/10: s+b toy 50/100 Duration: 4.29[s] Ran pseudo-experiment 10/10: s+b toy 100/100 Duration: 4.40[s]
-Point excluded 100.00% of the time.It is outside the +-2sigma band, above the median
-Done
-
-

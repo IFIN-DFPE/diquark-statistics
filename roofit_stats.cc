@@ -701,7 +701,7 @@ int main(int argc, char *argv[]) {
         discriminator = int(std::stod(config["discriminator"])*1000);
         const char* dataFile = Form("results/mChi2/signal_yields/sig_bkg_D%d.csv", discriminator);
         std::vector<DataPoint> data = read_CSV(dataFile);
-        std::ofstream prob_file(Form("results/mChi2/roofit_results/out_D%d/p_values.csv", discriminator));
+        std::ofstream prob_file(Form("results/mChi2/roofit_results/out_D%d/p_values_S825.csv", discriminator));
         prob_file << "M_S,p_value\n";
 
         // Initialize the number of pseudo-experiments and toys

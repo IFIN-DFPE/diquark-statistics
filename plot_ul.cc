@@ -16,7 +16,7 @@
 #include "TLatex.h"
 #include "TFile.h"
 #include "TROOT.h"
-
+#include "TStyle.h"
 
 std::vector<double> masses;
 std::vector<double> obs, med;
@@ -65,28 +65,20 @@ void read_CSV(const char* inputFile) {
 
     csvFile.close();
 
-    // Print the read data for debugging
-    std::cout << "\n=== Summary by Mass Points ===\n";
-    std::cout << "M_s [TeV]\t"
-         << "Observed\t"
-         << "-2sigma\t"
-         << "-1sigma\t"
-         << "Expected\t"
-         << "+1sigma\t"
-         << "+2sigma\n";
-    for (int i = 0 ; i < masses.size(); i++)
-        std::cout << std::fixed << std::setprecision(2) << masses[i] << "\t\t" << std::scientific 
-             << obs[i] << "\t" << sig2_lo[i] << "\t" << sig1_lo[i] << "\t"
-             << med[i] << "\t" << sig1_hi[i] << "\t" << sig2_hi[i] << "\n";
-    std::cout << "\n";
-
-
 }
 
 void generate_plot() {
 
+    gROOT->SetBatch(1);
+    gStyle->SetTextFont(42);
+    gStyle->SetLabelFont(42, "XYZ");
+    gStyle->SetTitleFont(42, "XYZ");
+    gStyle->SetLegendFont(42);
+    gStyle->SetLabelSize(0.04, "XYZ");
+
     TCanvas* c = new TCanvas("c_banana", "Upper Limit", 800, 600);
     c->SetLogy();
+
 
     TGraph* gObs = new TGraph(masses.size());
     TGraph* gMed = new TGraph(masses.size());
@@ -115,8 +107,8 @@ void generate_plot() {
     gMed->SetLineStyle(2);
     gMed->SetLineWidth(2);
     gSig1->SetFillColor(38);
-    gSig2->SetTitle(";M_{S} [TeV];Model independent 95\% C.L. limits on #sigma/#sigma_{SM}");
-    gSig2->GetYaxis()->SetRangeUser(5e-2,1e+1);
+    gSig2->SetTitle(";M_{S} [TeV];Model independent 95\% C.L. limits on #mu");
+    gSig2->GetYaxis()->SetRangeUser(0.05,6);
     gSig2->SetFillColor(kOrange-4);
 
     TLegend* legend = new TLegend(0.15, 0.7, 0.4, 0.88);
@@ -124,19 +116,31 @@ void generate_plot() {
     legend->AddEntry(gMed, "Expected U.L.", "l");
     legend->AddEntry(gSig1, "#pm1#sigma", "f");
     legend->AddEntry(gSig2, "#pm2#sigma", "f");
+    legend->SetTextSize(0.04);
+    legend->SetFillStyle(0);
+    legend->SetFillColor(0);
+    legend->SetLineStyle(0);
+    legend->SetLineColor(0);
+
+
+    TLatex* chiMass = new TLatex(7., 1.4, "M_{#chi} = 2.0 TeV");
+    chiMass->SetTextSize(0.04);
 
     gSig2->Draw("A3");
     gSig1->Draw("3 SAME");
     gMed->Draw("L SAME");
     gObs->Draw("PL SAME");
+    // c->SetGrid();
+    // c->RedrawAxis("g");
     legend->Draw("SAME");
+    chiMass->Draw("SAME");
 
     c->Update();
     c->Draw();
 
-    if(std::filesystem::create_directories("results/mChi2/graphs"))
+    if(std::filesystem::create_directories("results/mChi2/graphs/out_D900"))
     ;
-    c->SaveAs("results/mChi2/graphs/upper_limit.pdf");
+    c->SaveAs("results/mChi2/graphs/out_D900/chi2_upper_limit.pdf");
 
 }
 
