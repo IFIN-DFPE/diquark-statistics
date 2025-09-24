@@ -7,6 +7,7 @@
 #include <vector>
 #include <filesystem>
 
+
 #include "RooRealVar.h"
 #include "RooGaussian.h"
 #include "RooLognormal.h"
@@ -236,6 +237,224 @@ std::vector<DataPoint> read_CSV(const char* inputFile) {
 
 
 
+void runPseudoExp(RooArgSet* sb_params_default_vals,
+                RooArgSet globals, RooArgSet* sb_global_default_vals,
+                RooRealVar mu, RooRealVar mass, RooProdPdf sb_full,
+                TH1D* hCLS, TH1D* hCLSB, TH1D* hCLB,
+                const std::chrono::_V2::system_clock::time_point startFull,
+                Double_t& nTimesExcluded, Double_t& nTotalSB) {
+
+    const auto startPseudoExp = std::chrono::high_resolution_clock::now();
+
+    // OPTION 1. Set the XX_true parameters to the default values in order to generate PSEUDOEXPERIMENTS the same way every-time.
+    RooArgSet sb_params;
+    sb_params.assign(*sb_params_default_vals);
+
+
+    // 1. Global observables
+    // We regenerate those because if we were to "repeat" the experiment, you would redo the simulations as well, obtaining different
+    // S0_obs and B0_obs.
+    RooDataSet* ds_global = sb_full.generate(globals, 1);
+    globals.assign(*ds_global->get(0));
+
+
+    // 2. Main data
+    mu.setVal(0.0); // we're generating bkg-only PSEUDOEXPERIMENT, so turn off the signal
+    mu.setConstant(true);
+    RooDataSet *ds = sb_full.generate({mass}, RooFit::Extended());
+    ds->setGlobalObservables(globals); // set global observables so that RooFit does not fit S0_obs and B0_obs
+
+
+    // fit to s+b and record parameters and nll
+    // set and fix mu to 1.0, meaning full signal strength
+    sb_params.assign(*sb_params_default_vals);
+    mu.setVal(1.0);
+    mu.setConstant(true);
+    RooFitResult *result_mu = sb_full.fitTo(*ds, RooFit::Minimizer("Minuit2", "Migrad"), RooFit::PrintLevel(-1),
+                                            RooFit::PrintEvalErrors(-1), RooFit::Warnings(false),
+                                            RooFit::Verbose(false), RooFit::Save(), RooFit::GlobalObservables(globals));
+    // std::cout << "================ mu=1 fit ==============================" << std::endl;
+    // result_mu->Print("V");
+    Double_t nll_mu = result_mu->minNll();
+    RooArgSet *params_fit_sb = sb_params.snapshot();
+    // params_fit_sb->Print("V");
+    
+
+    // fit to b-only and record parameters and nll
+    // allow mu to float as described in the documents.
+    mu.setVal(1E-5);
+    mu.setConstant(false);
+    RooFitResult *result_mu_hat = sb_full.fitTo(*ds, RooFit::Minimizer("Minuit2", "Migrad"), RooFit::PrintLevel(-1),
+                                                RooFit::PrintEvalErrors(-1), RooFit::Warnings(false),
+                                                RooFit::Verbose(false), RooFit::Save(), RooFit::GlobalObservables(globals));
+    // std::cout << "================ mu_hat fit ==============================" << std::endl;
+    // result_mu_hat->Print("V");
+    Double_t nll_mu_hat = result_mu_hat->minNll();
+    // construct the test statistic of the "observed" data
+    // Q = -2 ln (L(mu=1)/L(mu_hat)) = -2 * (ln(L(mu=1)) - ln(L(mu_hat))) = 2*(nll(mu=1) - nll(mu_hat))
+    Double_t q_obs = 2. * (nll_mu - nll_mu_hat);
+    
+
+    // fit under pure background to find nuissance parameters
+    mu.setVal(0.0);
+    mu.setConstant(true);
+    RooFitResult *result_b = sb_full.fitTo(*ds, RooFit::Minimizer("Minuit2", "Migrad"), RooFit::PrintLevel(-1),
+                                            RooFit::PrintEvalErrors(-1), RooFit::Warnings(false),
+                                            RooFit::Verbose(false), RooFit::Save(), RooFit::GlobalObservables(globals));
+    // std::cout << "================ bkg fit ==============================" << std::endl;
+    // result_b->Print("V");
+    RooArgSet *params_fit_b = sb_params.snapshot();
+    // params_fit_b->Print("V");
+
+
+    // Build distribution of q under b-only and count how many times the TOY has a higher q than the PSEUDOEXPERIMENT.
+    // This number is 1-CLB (as defined in https://cds.cern.ch/record/1379837/files/NOTE2011_005.pdf)
+    Double_t n_higher_bkg = 0.0;
+    // histogram for the distribution of q under B-only
+    // This will show that when using the "unconstrained" ensemble, the q_mu dsitributions do not depend on the pseudoexperiment
+    // So one can derive them only once. In this code we do not use this property, but it's very nice to have in mind.
+    for (Int_t i_toy = 0; i_toy < nToys; ++i_toy)
+    {
+        const auto startToy = std::chrono::high_resolution_clock::now();
+        // OPTION 1. Set the bkg yield to the one obtained from the PSEUDOEXPERIMENT fit.
+        // sb_params.assign(*params_fit_b);
+        sb_params.assign(*params_fit_b);
+        
+
+        // generate the "XX_obs" variables
+        RooDataSet *ds_global_toy = sb_full.generate(globals, 1);
+        globals.assign(*ds_global_toy->get(0));
+        
+        mu.setVal(0.0);
+        RooDataSet *ds_toy = sb_full.generate({mass}, RooFit::Extended());
+        ds_toy->setGlobalObservables(globals);
+        mu.setVal(1.0);
+        mu.setConstant(true);
+        RooFitResult *result_mu_toy = sb_full.fitTo(*ds_toy, RooFit::Minimizer("Minuit2", "Migrad"), RooFit::PrintLevel(-1),
+                                                    RooFit::PrintEvalErrors(-1), RooFit::Warnings(false),
+                                                    RooFit::Verbose(false), RooFit::Save(), RooFit::GlobalObservables(globals));
+        Double_t nll_mu_toy = result_mu_toy->minNll();
+        
+        // mu.setVal(1E-5);
+        mu.setConstant(false);
+        RooFitResult *result_mu_hat_toy = sb_full.fitTo(*ds_toy, RooFit::Minimizer("Minuit2", "Migrad"), RooFit::PrintLevel(-1),
+                                                        RooFit::PrintEvalErrors(-1), RooFit::Warnings(false),
+                                                        RooFit::Verbose(false), RooFit::Save(), RooFit::GlobalObservables(globals));
+        Double_t nll_mu_hat_toy = result_mu_hat_toy->minNll();
+
+        Double_t q_toy = 2. * (nll_mu_toy - nll_mu_hat_toy);
+        delete result_mu_toy;
+        result_mu_toy = nullptr;
+        delete result_mu_hat_toy;
+        result_mu_hat_toy=nullptr;
+        delete ds_toy;
+        ds_toy = nullptr;
+        delete ds_global_toy;
+        ds_global_toy = nullptr;
+        
+        
+        if (q_toy >= q_obs)
+        {
+            n_higher_bkg += 1.0;
+        }
+
+
+        // remove the line below if you want to do debug printing.
+        const auto stopToy = std::chrono::high_resolution_clock::now();
+        auto durationToy = std::chrono::duration_cast<std::chrono::microseconds>(stopToy - startToy);
+        auto durationPE = std::chrono::duration_cast<std::chrono::milliseconds>(stopToy - startPseudoExp);
+        auto durationNow = std::chrono::duration_cast<std::chrono::milliseconds>(stopToy - startFull);
+
+        Double_t durationToyNice = durationToy.count() / 1000.; // ms
+        Double_t durationPENice = durationNow.count() / 1000.;  // s
+        Double_t durationNowNice = durationNow.count() / 1000.; // s
+        if ((i_toy+1) % (nToys / 2) == 0)
+        {
+            std::cout << " Duration: " << durationNowNice << "[s]\n" << std::flush;
+        }
+    }
+
+    // Build distribution of q under S+B and count how many times the TOY has a higher q than the PSEUDOEXPERIMENT.
+    // This number is CLSB (as defined in https://cds.cern.ch/record/1379837/files/NOTE2011_005.pdf)
+    Double_t n_higher_sb = 0.0;
+    for (Int_t i_toy = 0; i_toy < nToys; ++i_toy)
+    {
+        const auto startToy = std::chrono::high_resolution_clock::now();
+        // OPTION 1. set the signal and bkg yield to the one obtained from the PSEUDOEXPERIMENT fit.
+        sb_params.assign(*sb_params_default_vals);
+
+        // sb_full.generate(b_params);
+        // OPTION 2. Sample the signal and bkg yield before generating the PSEUDOEXPERIMENTS.
+        // NOT a frequentist construction, but we should not fear this.
+        RooDataSet *ds_global_toy = sb_full.generate(globals, 1);
+        globals.assign(*ds_global_toy->get(0));
+        mu.setVal(1.0);
+        RooDataSet *ds_toy = sb_full.generate({mass}, RooFit::Extended());
+        ds_toy->setGlobalObservables(globals);
+        mu.setVal(1.0);
+        mu.setConstant(true);
+        RooFitResult *result_mu_toy = sb_full.fitTo(*ds_toy, RooFit::Minimizer("Minuit2", "Migrad"), RooFit::PrintLevel(-1),
+                                                    RooFit::PrintEvalErrors(-1), RooFit::Warnings(false),
+                                                    RooFit::Verbose(false), RooFit::Save(), RooFit::GlobalObservables(globals));
+        Double_t nll_mu_toy = result_mu_toy->minNll();
+        mu.setVal(1E-5);
+        mu.setConstant(false);
+        RooFitResult *result_mu_hat_toy = sb_full.fitTo(*ds_toy, RooFit::Minimizer("Minuit2", "Migrad"), RooFit::PrintLevel(-1),
+                                                        RooFit::PrintEvalErrors(-1), RooFit::Warnings(false),
+                                                        RooFit::Verbose(false), RooFit::Save(), RooFit::GlobalObservables(globals));
+        Double_t nll_mu_hat_toy = result_mu_hat_toy->minNll();
+
+        Double_t q_toy = 2. * (nll_mu_toy - nll_mu_hat_toy);
+
+        delete result_mu_toy;
+        result_mu_toy = nullptr;
+        delete result_mu_hat_toy;
+        result_mu_hat_toy=nullptr;
+        delete ds_toy;
+        ds_toy = nullptr;
+        delete ds_global_toy;
+        ds_global_toy = nullptr;
+        
+
+        if (q_toy >= q_obs)
+        {
+            n_higher_sb += 1.0;
+        }
+
+        // remove the line below if you want to do debug printing.
+        const auto stopToy = std::chrono::high_resolution_clock::now();
+        auto durationToy = std::chrono::duration_cast<std::chrono::microseconds>(stopToy - startToy);
+        auto durationPE = std::chrono::duration_cast<std::chrono::milliseconds>(stopToy - startPseudoExp);
+        auto durationNow = std::chrono::duration_cast<std::chrono::milliseconds>(stopToy - startFull);
+
+        Double_t durationToyNice = durationToy.count() / 1000.; // ms
+        Double_t durationPENice = durationNow.count() / 1000.;  // s
+        Double_t durationNowNice = durationNow.count() / 1000.; // s
+        if ((i_toy+1) % (nToys / 2) == 0)
+        {
+            std::cout << " Duration: " << durationNowNice << "[s]\n" << std::flush;
+        }
+    }
+
+    // Computation of CLs. Exactly as described in the notes
+    Double_t clSB = (1.0 * n_higher_sb) / (1.0 * nToys);
+    Double_t clB = (1.0 * n_higher_bkg) / (1.0 * nToys);
+    Double_t CLS = clB > 0. ? clSB / clB : 0.0;
+    hCLS->Fill(CLS);
+    hCLSB->Fill(clSB);
+    hCLB->Fill(clB);
+    // Assume 95% confindence level
+    if (CLS < 0.05)
+    {
+        nTimesExcluded += 1.0;
+    }
+    nTotalSB += n_higher_sb;
+    
+
+}
+
+
+
 /*
     Function that performs the statistical analysis and checks if the points are excluded or not
     As an argument, pass the DataPoint associated to a given mass of Suu
@@ -348,6 +567,15 @@ void analysisRun(DataPoint point, std::ofstream &prob_file) {
     Double_t nTimesExcluded = 0.0;
     Double_t nTotalSB = 0.;
     const auto startFull = std::chrono::high_resolution_clock::now();
+
+
+    for(int i = 0; i < nPseudoExps; i++) {
+        runPseudoExp(sb_params_default_vals, globals, sb_global_default_vals,
+                    mu, mass, sb_full, hCLS, hCLSB, hCLB, startFull, nTimesExcluded, nTotalSB);
+    }
+
+    /*
+
     for (Int_t i = 0; i < nPseudoExps; ++i) {
         const auto startPseudoExp = std::chrono::high_resolution_clock::now();
         // OPTION 1. Set the XX_true parameters to the default values in order to generate PSEUDOEXPERIMENTS the same way every-time.
@@ -610,6 +838,8 @@ void analysisRun(DataPoint point, std::ofstream &prob_file) {
         Double_t durationPENice = durationPE.count() / 1000.; // s
         hTimePseudoExp->Fill(durationPENice);
     }
+
+    */
 
     std::cout << std::endl;
     Double_t ratioExcluded = (1.0*nTimesExcluded)/(1.0*nPseudoExps);
