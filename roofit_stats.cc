@@ -6,6 +6,7 @@
 #include <map>
 #include <vector>
 #include <filesystem>
+#include <omp.h>
 
 
 #include "RooRealVar.h"
@@ -18,10 +19,13 @@
 #include "RooConstVar.h"
 #include "RooArgList.h"
 #include "RooAddPdf.h"
+#include "RooAbsPdf.h"
+#include "RooNumIntConfig.h"
 #include "RooProdPdf.h"
 #include "RooRealConstant.h"
 #include "RooExtendPdf.h"
 #include "RooRandom.h"
+#include "RooWorkspace.h"
 #include "RooFitResult.h"
 #include "RooAbsReal.h"
 #include "RooMsgService.h"
@@ -103,6 +107,15 @@ struct DataPoint {
     double m_s; 
     double sig, sigma_sig;
     double bkg, sigma_bkg;
+};
+
+
+struct HistResult {
+    TH1D hCLS;
+    TH1D hCLSB;
+    TH1D hCLB;
+    double nTimesExcluded;
+    double nTotalSB;
 };
 
 
@@ -237,43 +250,89 @@ std::vector<DataPoint> read_CSV(const char* inputFile) {
 
 
 
-void runPseudoExp(RooArgSet* sb_params_default_vals,
-                RooArgSet globals, RooArgSet* sb_global_default_vals,
-                RooRealVar mu, RooRealVar mass, RooProdPdf sb_full,
-                TH1D* hCLS, TH1D* hCLSB, TH1D* hCLB,
+void generate(DataPoint point, int num_point) {
+    RooWorkspace* wspace;
+
+    #pragma omp critical
+    {
+        wspace = new RooWorkspace(Form("wspace_%d", num_point));
+    }
+
+    #pragma omp critical
+    {
+        RooRealVar mass(Form("mass_%d", num_point), Form("mass_%d", num_point), point.m_s, 7., 10.);
+        RooUniform sig_shape(Form("sig_shape_%d", num_point), Form("sig_shape_%d", num_point), mass);
+        RooUniform bkg_shape(Form("bkg_shape_%d", num_point), Form("bkg_shape_%d", num_point), mass);
+
+        wspace->import(sig_shape);
+        wspace->import(bkg_shape);
+    }
+
+    #pragma omp critical
+    {
+        wspace->Print("v");
+    }
+
+
+    delete wspace;
+    wspace = nullptr;
+
+}
+
+
+
+HistResult runPseudoExp(const RooArgSet& sb_params_default_vals,
+                const RooArgSet& in_globals, const RooArgSet& sb_global_default_vals,
+                RooRealVar mu, RooRealVar mass, const RooProdPdf& in_sb_full,
                 const std::chrono::_V2::system_clock::time_point startFull,
-                Double_t& nTimesExcluded, Double_t& nTotalSB) {
+                int num_thread) {
 
     const auto startPseudoExp = std::chrono::high_resolution_clock::now();
-
-    // OPTION 1. Set the XX_true parameters to the default values in order to generate PSEUDOEXPERIMENTS the same way every-time.
+    
+    RooProdPdf* sb_full;
+    RooArgSet* globals;
     RooArgSet sb_params;
-    sb_params.assign(*sb_params_default_vals);
+                    
+    #pragma omp critical 
+    {
+    // OPTION 1. Set the XX_true parameters to the default values in order to generate PSEUDOEXPERIMENTS the same way every-time.
+    
+    sb_params.assign(sb_params_default_vals);
 
+    sb_full = (RooProdPdf*)in_sb_full.cloneTree(Form("sb_full_%d", num_thread));
+    // sb_full->Print("v");
 
     // 1. Global observables
     // We regenerate those because if we were to "repeat" the experiment, you would redo the simulations as well, obtaining different
     // S0_obs and B0_obs.
-    RooDataSet* ds_global = sb_full.generate(globals, 1);
-    globals.assign(*ds_global->get(0));
+    globals = (RooArgSet*)in_globals.snapshot();
+    RooDataSet* ds_global = sb_full->generate(*globals, 1);
 
+    globals->assign(*ds_global->get(0));
+
+    }
 
     // 2. Main data
     mu.setVal(0.0); // we're generating bkg-only PSEUDOEXPERIMENT, so turn off the signal
     mu.setConstant(true);
-    RooDataSet *ds = sb_full.generate({mass}, RooFit::Extended());
-    ds->setGlobalObservables(globals); // set global observables so that RooFit does not fit S0_obs and B0_obs
+    RooDataSet *ds = sb_full->generate({mass}, RooFit::Extended());
+    ds->setGlobalObservables(*globals); // set global observables so that RooFit does not fit S0_obs and B0_obs
 
 
     // fit to s+b and record parameters and nll
     // set and fix mu to 1.0, meaning full signal strength
-    sb_params.assign(*sb_params_default_vals);
+    sb_params.assign(sb_params_default_vals);
     mu.setVal(1.0);
     mu.setConstant(true);
-    RooFitResult *result_mu = sb_full.fitTo(*ds, RooFit::Minimizer("Minuit2", "Migrad"), RooFit::PrintLevel(-1),
+    
+    RooFitResult *result_mu;
+    #pragma omp critical 
+    {
+    result_mu = sb_full->fitTo(*ds, RooFit::Minimizer("Minuit2", "Migrad"), RooFit::PrintLevel(-1),
                                             RooFit::PrintEvalErrors(-1), RooFit::Warnings(false),
-                                            RooFit::Verbose(false), RooFit::Save(), RooFit::GlobalObservables(globals));
-    // std::cout << "================ mu=1 fit ==============================" << std::endl;
+                                            RooFit::Verbose(false), RooFit::Save(), RooFit::GlobalObservables(*globals));
+    }
+                                            // std::cout << "================ mu=1 fit ==============================" << std::endl;
     // result_mu->Print("V");
     Double_t nll_mu = result_mu->minNll();
     RooArgSet *params_fit_sb = sb_params.snapshot();
@@ -284,9 +343,9 @@ void runPseudoExp(RooArgSet* sb_params_default_vals,
     // allow mu to float as described in the documents.
     mu.setVal(1E-5);
     mu.setConstant(false);
-    RooFitResult *result_mu_hat = sb_full.fitTo(*ds, RooFit::Minimizer("Minuit2", "Migrad"), RooFit::PrintLevel(-1),
+    RooFitResult *result_mu_hat = sb_full->fitTo(*ds, RooFit::Minimizer("Minuit2", "Migrad"), RooFit::PrintLevel(-1),
                                                 RooFit::PrintEvalErrors(-1), RooFit::Warnings(false),
-                                                RooFit::Verbose(false), RooFit::Save(), RooFit::GlobalObservables(globals));
+                                                RooFit::Verbose(false), RooFit::Save(), RooFit::GlobalObservables(*globals));
     // std::cout << "================ mu_hat fit ==============================" << std::endl;
     // result_mu_hat->Print("V");
     Double_t nll_mu_hat = result_mu_hat->minNll();
@@ -298,9 +357,9 @@ void runPseudoExp(RooArgSet* sb_params_default_vals,
     // fit under pure background to find nuissance parameters
     mu.setVal(0.0);
     mu.setConstant(true);
-    RooFitResult *result_b = sb_full.fitTo(*ds, RooFit::Minimizer("Minuit2", "Migrad"), RooFit::PrintLevel(-1),
+    RooFitResult *result_b = sb_full->fitTo(*ds, RooFit::Minimizer("Minuit2", "Migrad"), RooFit::PrintLevel(-1),
                                             RooFit::PrintEvalErrors(-1), RooFit::Warnings(false),
-                                            RooFit::Verbose(false), RooFit::Save(), RooFit::GlobalObservables(globals));
+                                            RooFit::Verbose(false), RooFit::Save(), RooFit::GlobalObservables(*globals));
     // std::cout << "================ bkg fit ==============================" << std::endl;
     // result_b->Print("V");
     RooArgSet *params_fit_b = sb_params.snapshot();
@@ -322,24 +381,24 @@ void runPseudoExp(RooArgSet* sb_params_default_vals,
         
 
         // generate the "XX_obs" variables
-        RooDataSet *ds_global_toy = sb_full.generate(globals, 1);
-        globals.assign(*ds_global_toy->get(0));
+        RooDataSet *ds_global_toy = sb_full->generate(*globals, 1);
+        globals->assign(*ds_global_toy->get(0));
         
         mu.setVal(0.0);
-        RooDataSet *ds_toy = sb_full.generate({mass}, RooFit::Extended());
-        ds_toy->setGlobalObservables(globals);
+        RooDataSet *ds_toy = sb_full->generate({mass}, RooFit::Extended());
+        ds_toy->setGlobalObservables(*globals);
         mu.setVal(1.0);
         mu.setConstant(true);
-        RooFitResult *result_mu_toy = sb_full.fitTo(*ds_toy, RooFit::Minimizer("Minuit2", "Migrad"), RooFit::PrintLevel(-1),
+        RooFitResult *result_mu_toy = sb_full->fitTo(*ds_toy, RooFit::Minimizer("Minuit2", "Migrad"), RooFit::PrintLevel(-1),
                                                     RooFit::PrintEvalErrors(-1), RooFit::Warnings(false),
-                                                    RooFit::Verbose(false), RooFit::Save(), RooFit::GlobalObservables(globals));
+                                                    RooFit::Verbose(false), RooFit::Save(), RooFit::GlobalObservables(*globals));
         Double_t nll_mu_toy = result_mu_toy->minNll();
         
         // mu.setVal(1E-5);
         mu.setConstant(false);
-        RooFitResult *result_mu_hat_toy = sb_full.fitTo(*ds_toy, RooFit::Minimizer("Minuit2", "Migrad"), RooFit::PrintLevel(-1),
+        RooFitResult *result_mu_hat_toy = sb_full->fitTo(*ds_toy, RooFit::Minimizer("Minuit2", "Migrad"), RooFit::PrintLevel(-1),
                                                         RooFit::PrintEvalErrors(-1), RooFit::Warnings(false),
-                                                        RooFit::Verbose(false), RooFit::Save(), RooFit::GlobalObservables(globals));
+                                                        RooFit::Verbose(false), RooFit::Save(), RooFit::GlobalObservables(*globals));
         Double_t nll_mu_hat_toy = result_mu_hat_toy->minNll();
 
         Double_t q_toy = 2. * (nll_mu_toy - nll_mu_hat_toy);
@@ -381,27 +440,27 @@ void runPseudoExp(RooArgSet* sb_params_default_vals,
     {
         const auto startToy = std::chrono::high_resolution_clock::now();
         // OPTION 1. set the signal and bkg yield to the one obtained from the PSEUDOEXPERIMENT fit.
-        sb_params.assign(*sb_params_default_vals);
+        sb_params.assign(sb_params_default_vals);
 
-        // sb_full.generate(b_params);
+        // sb_full->generate(b_params);
         // OPTION 2. Sample the signal and bkg yield before generating the PSEUDOEXPERIMENTS.
         // NOT a frequentist construction, but we should not fear this.
-        RooDataSet *ds_global_toy = sb_full.generate(globals, 1);
-        globals.assign(*ds_global_toy->get(0));
+        RooDataSet *ds_global_toy = sb_full->generate(*globals, 1);
+        globals->assign(*ds_global_toy->get(0));
         mu.setVal(1.0);
-        RooDataSet *ds_toy = sb_full.generate({mass}, RooFit::Extended());
-        ds_toy->setGlobalObservables(globals);
+        RooDataSet *ds_toy = sb_full->generate({mass}, RooFit::Extended());
+        ds_toy->setGlobalObservables(*globals);
         mu.setVal(1.0);
         mu.setConstant(true);
-        RooFitResult *result_mu_toy = sb_full.fitTo(*ds_toy, RooFit::Minimizer("Minuit2", "Migrad"), RooFit::PrintLevel(-1),
+        RooFitResult *result_mu_toy = sb_full->fitTo(*ds_toy, RooFit::Minimizer("Minuit2", "Migrad"), RooFit::PrintLevel(-1),
                                                     RooFit::PrintEvalErrors(-1), RooFit::Warnings(false),
-                                                    RooFit::Verbose(false), RooFit::Save(), RooFit::GlobalObservables(globals));
+                                                    RooFit::Verbose(false), RooFit::Save(), RooFit::GlobalObservables(*globals));
         Double_t nll_mu_toy = result_mu_toy->minNll();
         mu.setVal(1E-5);
         mu.setConstant(false);
-        RooFitResult *result_mu_hat_toy = sb_full.fitTo(*ds_toy, RooFit::Minimizer("Minuit2", "Migrad"), RooFit::PrintLevel(-1),
+        RooFitResult *result_mu_hat_toy = sb_full->fitTo(*ds_toy, RooFit::Minimizer("Minuit2", "Migrad"), RooFit::PrintLevel(-1),
                                                         RooFit::PrintEvalErrors(-1), RooFit::Warnings(false),
-                                                        RooFit::Verbose(false), RooFit::Save(), RooFit::GlobalObservables(globals));
+                                                        RooFit::Verbose(false), RooFit::Save(), RooFit::GlobalObservables(*globals));
         Double_t nll_mu_hat_toy = result_mu_hat_toy->minNll();
 
         Double_t q_toy = 2. * (nll_mu_toy - nll_mu_hat_toy);
@@ -440,16 +499,21 @@ void runPseudoExp(RooArgSet* sb_params_default_vals,
     Double_t clSB = (1.0 * n_higher_sb) / (1.0 * nToys);
     Double_t clB = (1.0 * n_higher_bkg) / (1.0 * nToys);
     Double_t CLS = clB > 0. ? clSB / clB : 0.0;
-    hCLS->Fill(CLS);
-    hCLSB->Fill(clSB);
-    hCLB->Fill(clB);
+    HistResult result;
+    result.hCLS.Fill(CLS);
+    result.hCLSB.Fill(clSB);
+    result.hCLB.Fill(clB);
     // Assume 95% confindence level
     if (CLS < 0.05)
     {
-        nTimesExcluded += 1.0;
+        result.nTimesExcluded = 1.0;
     }
-    nTotalSB += n_higher_sb;
+    result.nTotalSB = n_higher_sb;
     
+    delete globals;
+
+
+    return result;
 
 }
 
@@ -469,6 +533,7 @@ void analysisRun(DataPoint point, std::ofstream &prob_file) {
         In this case it will simply not matter that we have it, but the construction
         is easier to udnerstand when all ingredients are there.
     */
+
     RooRealVar mass("mass", "mass", point.m_s, 7., 10.);
     RooUniform sig_shape("sig_shape", "sig_shape", mass);
     RooUniform bkg_shape("bkg_shape", "bkg_shape", mass);
@@ -568,10 +633,17 @@ void analysisRun(DataPoint point, std::ofstream &prob_file) {
     Double_t nTotalSB = 0.;
     const auto startFull = std::chrono::high_resolution_clock::now();
 
-
+    #pragma omp parallel for 
     for(int i = 0; i < nPseudoExps; i++) {
-        runPseudoExp(sb_params_default_vals, globals, sb_global_default_vals,
-                    mu, mass, sb_full, hCLS, hCLSB, hCLB, startFull, nTimesExcluded, nTotalSB);
+        HistResult result = runPseudoExp(*sb_params_default_vals, globals, *sb_global_default_vals,
+                   mu, mass, sb_full, startFull, i);
+        
+        // generate(point, i);
+        
+        #pragma omp critical 
+        {
+            std::cout << i << '\n';
+        }
     }
 
     /*
@@ -909,6 +981,8 @@ int main(int argc, char *argv[]) {
     
     // Make ROOT run in batch mode
     gROOT->SetBatch(1);
+
+    ROOT::EnableThreadSafety();
 
     TApplication app("app", &argc, argv);
 
