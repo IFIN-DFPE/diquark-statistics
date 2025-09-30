@@ -233,6 +233,9 @@ PseudoExperimentResult runPseudoExp(PseudoExperimentInput input) {
     DataPoint point = input.point;
     int index = input.experimentIndex;
 
+    // Use experiment index as RNG seed
+    RooRandom::randomGenerator()->SetSeed(index);
+
     const auto startPseudoExp = std::chrono::high_resolution_clock::now();
 
     /*
