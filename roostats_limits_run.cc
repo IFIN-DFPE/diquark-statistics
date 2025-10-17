@@ -2,7 +2,7 @@
     Run the program with the path to the .csv as an argument
     E.g.: root 'roostats_analysis.cc("path/to/file/.csv")'
 */
-
+#include "nlohmann/json.hpp"
 #include "RooRealVar.h"
 #include "RooGaussian.h"
 #include "RooLognormal.h"
@@ -59,6 +59,9 @@ using namespace RooFit;
 using namespace RooStats;
 
 
+std::string path;
+
+
 /*
     Data type holding:
     - the mass value
@@ -76,9 +79,9 @@ struct DataPoint {
     Function taking as input the path of a .csv datafile and 
     returns a vector of DataPoint type values.
 */
-vector<DataPoint> read_CSV(const char* inputFile) {
+vector<DataPoint> read_CSV(std::string inputFile) {
     // Check if user has entered the path to the data file when running the macro
-    if (!inputFile) {
+    if (inputFile.empty()) {
         cerr << "Error: Please enter the name of the data file to be read.\n";
         cerr << "Usage: root \'roostats_analysis(\"filename\")\'\n";
         exit(EXIT_FAILURE);
@@ -244,12 +247,12 @@ vector<double> point_exclusion(DataPoint point, TFile* output_file) {
 
     HypoTestInverterResult* result = inverter->GetInterval();
     
-    exclusion_limits.push_back(result->UpperLimit());
-    exclusion_limits.push_back(result->GetExpectedUpperLimit(-2));
-    exclusion_limits.push_back(result->GetExpectedUpperLimit(-1));
-    exclusion_limits.push_back(result->GetExpectedUpperLimit(0));
-    exclusion_limits.push_back(result->GetExpectedUpperLimit(1));
-    exclusion_limits.push_back(result->GetExpectedUpperLimit(2));
+    exclusion_limits.push_back(result->UpperLimit()*point.sig);
+    exclusion_limits.push_back(result->GetExpectedUpperLimit(-2)*point.sig);
+    exclusion_limits.push_back(result->GetExpectedUpperLimit(-1)*point.sig);
+    exclusion_limits.push_back(result->GetExpectedUpperLimit(0)*point.sig);
+    exclusion_limits.push_back(result->GetExpectedUpperLimit(1)*point.sig);
+    exclusion_limits.push_back(result->GetExpectedUpperLimit(2)*point.sig);
 
     // Plot results
     TCanvas* c = new TCanvas(Form("CLs_mu95_S%d", int(point.m_s*100)), Form("CLs_mu95_S%d", int(point.m_s*100)), 800, 600);
@@ -289,17 +292,33 @@ vector<double> point_exclusion(DataPoint point, TFile* output_file) {
 /*
     Main analysis function
 */
-void roostats_limits_run(const char* inputFile = nullptr) {
+void roostats_limits_run(const char* configFilePath = nullptr) {
     
     gROOT->SetBatch(1);
 
     RooMsgService::instance().setGlobalKillBelow(RooFit::WARNING);
+    
+    // Load the file containing the paths
+    std::ifstream pathFile("analysis_paths.json");
+    nlohmann::json paths = nlohmann::json::parse(pathFile);
 
-    vector<DataPoint> data = read_CSV(inputFile);
+    // Load configuration file
+    std::ifstream configFile(configFilePath);
+    nlohmann::json config = nlohmann::json::parse(configFile);
+
+    auto discriminator = int(config["discriminator"].get<float>()*1000);
+    auto process = config["process"].get<std::string>();
+    path = paths[process].get<std::string>();
+    std::string inputFilePath = path + Form("/signal_yields/sig_bkg_D%d.csv", discriminator);
+
+
+    // Read signal yields and uncertainties 
+    vector<DataPoint> data = read_CSV(inputFilePath);
     vector<vector <double>> limits;
 
-    TFile* output_file = TFile::Open("results/mChi1_5/roostats_results/out_D900/mu95_limits.root", "RECREATE");
-    ofstream upper_file("results/mChi1_5/roostats_results/out_D900/upper_limits.csv");
+    std::string out_path = path + Form("/roostats_results/out_D%d/mu95_limits.root", discriminator);
+    TFile* output_file = TFile::Open(out_path.c_str(), "RECREATE");
+    ofstream upper_file(path + Form("/roostats_results/out_D%d/upper_limits.csv", discriminator));
 
     for(auto point : data) 
         limits.push_back(point_exclusion(point, output_file));
@@ -312,6 +331,8 @@ void roostats_limits_run(const char* inputFile = nullptr) {
         upper_file << Form(",%f,%f,%f,%f,%f,%f\n", limits[i][0], limits[i][1], limits[i][2], limits[i][3], limits[i][4], limits[i][5]);
     }
 
+    pathFile.close();
+    configFile.close();
     upper_file.close();
     output_file->Write();
     output_file->Close();

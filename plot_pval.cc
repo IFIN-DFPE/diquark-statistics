@@ -17,15 +17,17 @@
 #include "TROOT.h"
 #include "TStyle.h"
 
+struct p_val_points{
+    std::vector<double> masses;
+    std::vector<double> p_vals;
+};
 
-std::vector<double> masses;
-std::vector<double> p_vals;
-
+p_val_points D900, D925;
 
 /*
     Function taking as input the path of a .csv datafile and reads it
 */
-void read_CSV(const char* inputFile) {
+p_val_points read_CSV(const char* inputFile) {
     // Check if user has entered the path to the data file when running the macro
     if (!inputFile) throw std::runtime_error("Error: Please enter the name of the data file to be read.\n");
 
@@ -40,19 +42,23 @@ void read_CSV(const char* inputFile) {
     // Skip header
     std::getline(csvFile, line);
     
+    p_val_points result;
+
     // Parse csv file by line
     while(std::getline(csvFile, line)) {
         std::stringstream str(line);
         std::string cell;
 
         // Mass values
-        if(std::getline(str, cell, ',')) masses.push_back(stod(cell));
+        if(std::getline(str, cell, ',')) result.masses.push_back(stod(cell));
         // Local p-value
-        if(std::getline(str, cell, ',')) p_vals.push_back(stod(cell));   
+        if(std::getline(str, cell, ',')) result.p_vals.push_back(stod(cell));   
 
     }
 
     csvFile.close();
+
+    return result;
 
 }
 
@@ -69,16 +75,17 @@ void generate_plot() {
     TCanvas* c = new TCanvas("c_pval", "Local p-values", 800, 600);
     c->SetLogy();
 
-    TGraph* gP_val = new TGraph(masses.size(), &masses[0], &p_vals[0]);
+    TGraph* gP_val_900 = new TGraph(D900.masses.size(), &D900.masses[0], &D900.p_vals[0]);
+    TGraph* gP_val_925 = new TGraph(D925.masses.size(), &D925.masses[0], &D925.p_vals[0]);
 
-    gP_val->SetTitle(";M_{S} [TeV];Local p-value");
-    gP_val->SetMarkerStyle(24);
-    gP_val->SetMarkerSize(1.5);
-    gP_val->SetLineWidth(2);
+    gP_val_900->SetTitle(";M_{S} [TeV];Local p-value");
+    gP_val_900->SetMarkerStyle(24);
+    gP_val_900->SetMarkerSize(1.5);
+    gP_val_900->SetLineWidth(2);
 
-    gP_val->Draw("APL");
-    gP_val->GetXaxis()->SetRangeUser(6.8, 8.95);
-    gP_val->GetYaxis()->SetRangeUser(5e-8, 1.);
+    gP_val_900->Draw("APL");
+    gP_val_900->GetXaxis()->SetRangeUser(6.8, 8.95);
+    gP_val_900->GetYaxis()->SetRangeUser(5e-8, 1.);
 
     double x_min = 6.8;
     double x_max = 8.95;
@@ -108,9 +115,10 @@ void generate_plot() {
     c->Draw();
 
 
-    if(std::filesystem::create_directories("results/mChi1_5/graphs/out_D900"))
+    if(std::filesystem::create_directories("ChiChi/yuu_02/mChi1_5/graphs/out_D925"))
     ;
-    c->SaveAs("results/mChi1_5/graphs/out_D900/chi15_local_pvals.pdf");
+    c->SaveAs("ChiChi/yuu_02/mChi1_5/graphs/out_D925/local_pvals.pdf");
+    c->SaveAs("ChiChi/yuu_02/mChi1_5/graphs/out_D925/local_pvals.png");
 
 
 }
@@ -121,9 +129,11 @@ void plot_pval() {
     gROOT->SetBatch(1);
 
     try{
-        const char* inputFile = "results/mChi1_5/roofit_results/out_D900/p_values.csv";
+        const char* inputD900 = "ChiChi/yuu_02/mChi2/roofit_results/out_D900/p_values.csv";
+        const char* inputD925 = "ChiChi/yuu_02/mChi2/roofit_results/out_D925/p_values.csv";
 
-        read_CSV(inputFile);
+        D900 = read_CSV(inputD900);
+        D925 = read_CSV(inputD925);
         generate_plot();
     }
     catch(const std::exception& exc) {

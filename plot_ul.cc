@@ -9,6 +9,7 @@
 
 #include "TGraphAsymmErrors.h"
 #include "TLegend.h"
+#include "TObject.h"
 #include "TH1D.h"
 #include "TMath.h"
 #include "TCanvas.h"
@@ -107,40 +108,35 @@ void generate_plot() {
     gMed->SetLineStyle(2);
     gMed->SetLineWidth(2);
     gSig1->SetFillColor(38);
-    gSig2->SetTitle(";M_{S} [TeV];Model independent 95\% C.L. limits on #mu");
-    gSig2->GetYaxis()->SetRangeUser(0.05,6);
+    gSig2->SetTitle(";M_{S} [TeV];Upper Limit on #mu^{95}#times S_{ev}");
+    gSig2->GetYaxis()->SetRangeUser(5e-1, 6e1);
     gSig2->SetFillColor(kOrange-4);
 
-    TLegend* legend = new TLegend(0.15, 0.7, 0.4, 0.88);
-    legend->AddEntry(gObs, "Observed U.L.", "l");
+    TLegend* legend = new TLegend(0.6, 0.6, 0.8, 0.89);
+    // legend->AddEntry(gObs, "Observed U.L.", "l");
     legend->AddEntry(gMed, "Expected U.L.", "l");
     legend->AddEntry(gSig1, "#pm1#sigma", "f");
     legend->AddEntry(gSig2, "#pm2#sigma", "f");
+    legend->AddEntry((TObject*)0, "M_{#chi} = 1.5 TeV", "");
+    legend->AddEntry((TObject*)0, "D = 0.9", "");
     legend->SetTextSize(0.04);
     legend->SetFillStyle(0);
     legend->SetFillColor(0);
-    legend->SetLineStyle(0);
-    legend->SetLineColor(0);
+    legend->SetBorderSize(0);
 
-
-    TLatex* chiMass = new TLatex(7., 1.4, "M_{#chi} = 2.0 TeV");
-    chiMass->SetTextSize(0.04);
-
-    gSig2->Draw("A3");
+    gSig2->Draw("A3 SAME");
     gSig1->Draw("3 SAME");
     gMed->Draw("L SAME");
-    gObs->Draw("PL SAME");
-    // c->SetGrid();
-    // c->RedrawAxis("g");
+    // gObs->Draw("PL SAME");
     legend->Draw("SAME");
-    chiMass->Draw("SAME");
 
     c->Update();
     c->Draw();
 
-    if(std::filesystem::create_directories("results/mChi2/graphs/out_D900"))
+    if(std::filesystem::create_directories("uChi/yuu_04/mChi1_5/graphs/out_D900"))
     ;
-    c->SaveAs("results/mChi2/graphs/out_D900/chi2_upper_limit.pdf");
+    c->SaveAs("uChi/yuu_04/mChi1_5/graphs/out_D900/chi1_5_upper_limit.pdf");
+    c->SaveAs("uChi/yuu_04/mChi1_5/graphs/out_D900/chi1_5_upper_limit.png");
 
 }
 
@@ -149,8 +145,7 @@ void plot_ul() {
     gROOT->SetBatch(1);
 
     try{
-        const char* inputFile = "results/mChi2/roostats_results/out_D900/upper_limits.csv";
-
+        const char* inputFile = "uChi/yuu_04/mChi1_5/roostats_results/out_D900/upper_limits.csv";
         read_CSV(inputFile);
         generate_plot();
     

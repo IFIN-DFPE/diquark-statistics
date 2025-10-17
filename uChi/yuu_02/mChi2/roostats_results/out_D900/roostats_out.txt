@@ -1,0 +1,107 @@
+   ------------------------------------------------------------------
+  | Welcome to ROOT 6.32.10                        https://root.cern |
+  | (c) 1995-2024, The ROOT Team; conception: R. Brun, F. Rademakers |
+  | Built for linuxx8664gcc on Feb 10 2025, 07:19:13                 |
+  | From tags/v6-32-10@v6-32-10                                      |
+  | With c++ (GCC) 11.5.0 20240719 (Red Hat 11.5.0-2)                |
+  | Try '.help'/'.?', '.demo', '.license', '.credits', '.quit'/'.q'  |
+   ------------------------------------------------------------------
+
+
+Processing roostats_limits_run.cc("uChi/yuu_02/mChi2/signal_yields/sig_bkg_D900.csv")...
+In file included from input_line_8:1:
+/home/dcostach/diquark/roostats_limits_run.cc:256:89: warning: invalid conversion specifier 'U' [-Wformat-invalid-specifier]
+    HypoTestInverterPlot* plot = new HypoTestInverterPlot("HTI_Result_Plot", Form("95\% Upper Limit scan on #mu for M_{S} = %.2f TeV;#mu;CL_{S}", point.m_s), result);
+                                                                                     ~~~^
+Reading data from: uChi/yuu_02/mChi2/signal_yields/sig_bkg_D900.csv
+
+=== Summary by Mass Points ===
+M_s [TeV]	SIG			BKG
+7.00		3.91e+01 ± 6.65e-02	2.57e+01 ± 2.09e+00
+7.25		2.50e+01 ± 1.93e-02	1.62e+01 ± 1.59e+00
+7.50		1.58e+01 ± 2.43e-02	8.60e+00 ± 9.65e-01
+7.75		9.84e+00 ± 1.83e-02	4.85e+00 ± 7.04e-01
+8.00		6.05e+00 ± 5.91e-03	3.16e+00 ± 2.68e-01
+8.25		3.65e+00 ± 5.69e-03	1.82e+00 ± 2.58e-01
+8.50		2.17e+00 ± 3.67e-03	8.85e-01 ± 1.35e-01
+8.75		1.28e+00 ± 1.95e-03	4.45e-01 ± 5.90e-02
+
+cling::DynamicLibraryManager::loadLibrary(): libgsl.so.25: cannot open shared object file: No such file or directory
+[#0] ERROR:Integration --  RooNumIntFactory::Init : libRooFitMore cannot be loaded. GSL integrators will not beavailable ! 
+AsymptoticCalculator::EvaluateNLL  ........ using  / Migrad with strategy  1 and tolerance 1.00e+00
+Minuit2Minimizer: Minimize with max-calls 1000 convergence for edm < 1.00e+00 strategy 1
+Minuit2Minimizer : Valid minimum - status = 0
+FVAL  = 5.903415104909842626e+01
+Edm   = 6.560469588117356332e-07
+Nfcn  = 33
+B0_true	  = 2.27e+01	 +/-  1.67e+00	(limited)
+S0_true	  = 3.90e+01	 +/-  6.64e-02	(limited)
+AsymptoticCalculator::EvaluateNLL -  value = 5.90e+01	fit time : Real time 0:00:00, CP time 0.050
+MakeAsimov: Setting poi mu to a constant value = 0.00e+00
+MakeAsimov: doing a conditional fit for finding best nuisance values 
+Minuit2Minimizer: Minimize with max-calls 1000 convergence for edm < 1.00e+00 strategy 1
+Minuit2Minimizer : Valid minimum - status = 0
+FVAL  = 2.099262262111243160e+01
+Edm   = 5.996035182812999252e-09
+Nfcn  = 24
+B0_true	  = 2.28e+01	 +/-  1.67e+00	(limited)
+S0_true	  = 3.90e+01	 +/-  6.64e-02	(limited)
+fit time Real time 0:00:00, CP time 0.000
+RooDataSet::AsimovData[mass,weight:binWeightAsimov] = 100 entries (2.28e+01 weighted)
+Generated Asimov data for observables RooArgSet:: = (mass)
+Generated Asimov data for global observables RooArgSet:: = (S0_obs,B0_obs)
+AsymptoticCalculator::EvaluateNLL  ........ using  / Migrad with strategy  1 and tolerance 1.00e+00
+Minuit2Minimizer: Minimize with max-calls 1000 convergence for edm < 1.00e+00 strategy 1
+Warning in <Minuit2>: VariableMetricBuilder No improvement in line search
+Minuit2Minimizer : Valid minimum - status = 0
+FVAL  = -2.377971739765184722e+01
+Edm   = 5.331766297626020736e-20
+Nfcn  = 24
+B0_true	  = 2.28e+01	 +/-  1.67e+00	(limited)
+S0_true	  = 3.90e+01	 +/-  6.64e-02	(limited)
+AsymptoticCalculator::EvaluateNLL -  value = -2.38e+01 for poi fixed at = 0.00e+00	fit time : Real time 0:00:00, CP time 0.000
+[#0] WARNING:Minimization -- AsymptoticCalculator:  Found a negative value of the qmu - retry to do the unconditional fit 
+[#0] WARNING:Minimization -- AsymptoticCalculator:  Found a better unconditional minimum  old NLL = 5.90e+01 old muHat 1.00e+00
+[#0] WARNING:Minimization -- AsymptoticCalculator:  New minimum  found for                           NLL = 2.10e+01    muHat  0.00e+00
+[#0] WARNING:Minimization -- AsymptoticCalculator:  Found a negative value of the qmu - retry to do the unconditional fit 
+[#0] WARNING:Minimization -- AsymptoticCalculator:  Found a better unconditional minimum  old NLL = 3.51e+01 old muHat 1.00e+00
+[#0] WARNING:Minimization -- AsymptoticCalculator:  New minimum  found for                           NLL = 1.11e+01    muHat  0.00e+00
+[#0] WARNING:Minimization -- AsymptoticCalculator:  Found a negative value of the qmu - retry to do the unconditional fit 
+[#0] WARNING:Minimization -- AsymptoticCalculator:  Found a better unconditional minimum  old NLL = 1.91e+01 old muHat 1.00e+00
+[#0] WARNING:Minimization -- AsymptoticCalculator:  New minimum  found for                           NLL = 4.36e+00    muHat  0.00e+00
+[#0] WARNING:Minimization -- AsymptoticCalculator:  Found a negative value of the qmu - retry to do the unconditional fit 
+[#0] WARNING:Minimization -- AsymptoticCalculator:  Found a better unconditional minimum  old NLL = 9.39e+00 old muHat 1.00e+00
+[#0] WARNING:Minimization -- AsymptoticCalculator:  New minimum  found for                           NLL = 6.91e-01    muHat  0.00e+00
+[#0] WARNING:Minimization -- AsymptoticCalculator:  Found a negative value of the qmu - retry to do the unconditional fit 
+[#0] WARNING:Minimization -- AsymptoticCalculator:  Found a better unconditional minimum  old NLL = 2.37e+00 old muHat 1.00e+00
+[#0] WARNING:Minimization -- AsymptoticCalculator:  New minimum  found for                           NLL = -2.61e+00    muHat  0.00e+00
+[#0] WARNING:Minimization -- AsymptoticCalculator:  Found a negative value of the qmu - retry to do the unconditional fit 
+[#0] WARNING:Minimization -- AsymptoticCalculator:  Found a better unconditional minimum  old NLL = -9.35e-01 old muHat 1.00e+00
+[#0] WARNING:Minimization -- AsymptoticCalculator:  New minimum  found for                           NLL = -3.49e+00    muHat  0.00e+00
+[#0] WARNING:Minimization -- AsymptoticCalculator:  Found a negative value of the qmu - retry to do the unconditional fit 
+[#0] WARNING:Minimization -- AsymptoticCalculator:  Found a better unconditional minimum  old NLL = -3.86e+00 old muHat 1.00e+00
+[#0] WARNING:Minimization -- AsymptoticCalculator:  New minimum  found for                           NLL = -4.81e+00    muHat  0.00e+00
+[#0] WARNING:Minimization -- AsymptoticCalculator:  Found a negative value of the qmu - retry to do the unconditional fit 
+[#0] WARNING:Minimization -- AsymptoticCalculator:  Found a better unconditional minimum  old NLL = -4.81e+00 old muHat 0.00e+00
+[#0] WARNING:Minimization -- AsymptoticCalculator:  New minimum  found for                           NLL = -4.82e+00    muHat  6.06e-02
+[#0] WARNING:Minimization -- AsymptoticCalculator:  Found a negative value of the qmu - retry to do the unconditional fit 
+[#0] WARNING:Minimization -- AsymptoticCalculator:  Found a better unconditional minimum  old NLL = -6.09e+00 old muHat 1.00e+00
+[#0] WARNING:Minimization -- AsymptoticCalculator:  New minimum  found for                           NLL = -6.11e+00    muHat  6.06e-02
+[#0] WARNING:Minimization -- AsymptoticCalculator:  Found a negative value of the qmu - retry to do the unconditional fit 
+[#0] WARNING:Minimization -- AsymptoticCalculator:  Found a better unconditional minimum  old NLL = -6.11e+00 old muHat 6.06e-02
+[#0] WARNING:Minimization -- AsymptoticCalculator:  New minimum  found for                           NLL = -6.17e+00    muHat  1.21e-01
+[#0] WARNING:Minimization -- AsymptoticCalculator:  Found a negative value of the qmu - retry to do the unconditional fit 
+[#0] WARNING:Minimization -- AsymptoticCalculator:  Found a better unconditional minimum  old NLL = -6.17e+00 old muHat 1.21e-01
+[#0] WARNING:Minimization -- AsymptoticCalculator:  New minimum  found for                           NLL = -6.21e+00    muHat  1.82e-01
+[#0] WARNING:Minimization -- AsymptoticCalculator:  Found a negative value of the qmu - retry to do the unconditional fit 
+[#0] WARNING:Minimization -- AsymptoticCalculator:  Found a better unconditional minimum  old NLL = -6.21e+00 old muHat 1.82e-01
+[#0] WARNING:Minimization -- AsymptoticCalculator:  New minimum  found for                           NLL = -6.24e+00    muHat  2.42e-01
+[#0] WARNING:Minimization -- AsymptoticCalculator:  Found a negative value of the qmu - retry to do the unconditional fit 
+[#0] WARNING:Minimization -- AsymptoticCalculator:  Found a better unconditional minimum  old NLL = -6.24e+00 old muHat 2.42e-01
+[#0] WARNING:Minimization -- AsymptoticCalculator:  New minimum  found for                           NLL = -6.26e+00    muHat  3.03e-01
+[#0] WARNING:Minimization -- AsymptoticCalculator:  Found a negative value of the qmu - retry to do the unconditional fit 
+[#0] WARNING:Minimization -- AsymptoticCalculator:  Found a better unconditional minimum  old NLL = -6.26e+00 old muHat 3.03e-01
+[#0] WARNING:Minimization -- AsymptoticCalculator:  New minimum  found for                           NLL = -6.27e+00    muHat  3.64e-01
+[#0] WARNING:Minimization -- AsymptoticCalculator:  Found a negative value of the qmu - retry to do the unconditional fit 
+[#0] WARNING:Minimization -- AsymptoticCalculator:  Found a better unconditional minimum  old NLL = -6.27e+00 old muHat 3.64e-01
+[#0] WARNING:Minimization -- AsymptoticCalculator:  New minimum  found for                           NLL = -6.27e+00    muHat  4.24e-01
