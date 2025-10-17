@@ -8,7 +8,7 @@
 #include <filesystem>
 #include <omp.h>
 
-
+#include "nlohmann/json.hpp"
 #include "ROOT/TProcessExecutor.hxx"
 #include "RooRealVar.h"
 #include "RooGaussian.h"
@@ -104,61 +104,8 @@ int discriminator;
 int nPseudoExps = 100;
 // Number of TOYS per PSEUDOEXPERIMENTS. Recommend 1000 at least, maybe 10000
 int nToys = 1000;
-
-
-
-/*
-    Function taking as argument the path to the config file, parsing the
-    config file and returning a map containing:
-        - key: the defined property
-        - value: the value of said property
-*/
-std::map<std::string, std::string> load_Config(const char* inputFile) {
-    // Check if user has entered the path to the config file
-    if(!inputFile) {
-        throw std::runtime_error("Error: Please enter the name of the configuration file.\n");
-    }
-
-    std::ifstream configFile(inputFile);
-    std::map<std::string, std::string> conf_Map;
-
-    // Parse config file
-    std::string line;
-    while(getline(configFile, line)) {
-        // Trim white spaces
-        auto trim = [](std::string& s) {
-            size_t start = s.find_first_not_of(" \t");
-            size_t end = s.find_last_not_of(" \t");
-            if(start == std::string::npos) {s.clear(); return;}
-            s = s.substr(start, end-start+1);
-        };
-
-        // Check if line is empty
-        trim(line);
-        if(line.empty()) continue;
-
-        // Find the position of the '=' sign
-        size_t limPos = line.find('=');
-        if(limPos == std::string::npos) continue;
-
-        // Read the key and value from the line and trim white spaces
-        std::string key = line.substr(0, limPos);
-        trim(key);
-        std::string value = line.substr(limPos+1);
-        trim(value);
-
-        conf_Map[key] = value;
-
-    }
-    configFile.close();
-
-    if(conf_Map.empty()) {
-        throw std::runtime_error("Error: Configuration file is empty, please check it.\n");
-    }
-
-    return conf_Map;
-
-}
+// Path to the process 
+std::string path;
 
 
 
@@ -166,9 +113,9 @@ std::map<std::string, std::string> load_Config(const char* inputFile) {
     Function taking as argument the path of a .csv datafile and
     returns a vector of DataPoint type values.
 */
-std::vector<DataPoint> read_CSV(const char* inputFile) {
+std::vector<DataPoint> read_CSV(std::string inputFile) {
     // Check if user has entered the path to the data file
-    if(!inputFile) {
+    if(inputFile.empty()) {
         throw std::runtime_error("Error: Please enter the name of the data file to be read.\n");
     }
 
@@ -567,7 +514,7 @@ void analysisRun(DataPoint point, std::ofstream &prob_file) {
     TH1D hTimePseudoExp("hTimePseudoExp", "Pseudo-experiments; PE time [s]", 100, 0., 20. * nToys / 1000.);
 
     // Create a pool of processes (size = number of CPU cores by default)
-    ROOT::TProcessExecutor pool;
+    ROOT::TProcessExecutor pool(96);
 
     // Create a vector to store the inputs for each pseudo-experiment
     std::vector<PseudoExperimentInput> inputs(nPseudoExps);
@@ -625,13 +572,18 @@ void analysisRun(DataPoint point, std::ofstream &prob_file) {
     prob_file << std::fixed << std::setprecision(2) << point.m_s << "," << std::setprecision(5) << std::scientific << nTotalSB/(nPseudoExps*nToys) << '\n';
     std::cout << std::fixed << std::setprecision(2);
 
-    if(std::filesystem::create_directories(Form("results/mChi2/roofit_results/out_D%d", discriminator)))
+    if(std::filesystem::create_directories(path + Form("/roofit_results/out_D%d", discriminator)))
     ;
-    TFile *output_file = TFile::Open(Form("results/mChi2/roofit_results/out_D%d/output_S%d.root", discriminator, int(point.m_s*100)), "RECREATE");
+    std::string out_path = path + Form("/roofit_results/out_D%d/output_S%d.root", discriminator, int(point.m_s*100));
+    TFile *output_file = TFile::Open(out_path.c_str(), "RECREATE");
     // dsitributions of CLS, CLSB and CLB
     TH1D hCLS("hCLS", "CLS", 100, 0., 1.);
+    hCLS.Add(&results.hCLS);
     TH1D hCLSB("hCLSB", "CLSB", 100, 0., 1.);
+    hCLSB.Add(&results.hCLSB);
     TH1D hCLB("hCLB", "1-CLB", 100, 0., 1.);
+    hCLB.Add(&results.hCLB);
+
 
     TCanvas c_cls("c_cls", "c_cls");
     c_cls.Divide(3, 1);
@@ -676,41 +628,50 @@ int main(int argc, char *argv[]) {
     gInterpreter->LoadFile("data_types.hxx");
 
     try {
-        // Load the config file
-        const char* configFile = app.Argv(1);
-        std::map<std::string, std::string> config = load_Config(configFile);
+        
+        // Load the file containing the paths
+        std::ifstream pathFile("analysis_paths.json");
+        nlohmann::json paths = nlohmann::json::parse(pathFile);
 
+        // Load the config file
+        const char* configFilePath = app.Argv(1);
+        std::ifstream configFile(configFilePath);
+        nlohmann::json config = nlohmann::json::parse(configFile);
+    
         // Check if the user entered the runType
         if(config["runType"] == "") {
             throw std::runtime_error("Error: Please specify the work mode of the program\n");
         }
 
         // Read the file containing the event yields
-        discriminator = int(std::stod(config["discriminator"])*1000);
-        const char* dataFile = Form("results/mChi2/signal_yields/sig_bkg_D%d.csv", discriminator);
+        discriminator = int(config["discriminator"].get<float>()*1000);
+        auto process = config["process"].get<std::string>();
+        path = paths[process].get<std::string>();
+        std::string dataFile = path + Form("/signal_yields/sig_bkg_D%d.csv", discriminator);
         std::vector<DataPoint> data = read_CSV(dataFile);
-        std::ofstream prob_file(Form("results/mChi2/roofit_results/out_D%d/p_values_S825.csv", discriminator));
+        std::ofstream prob_file(path + Form("/roofit_results/out_D%d/p_values.csv", discriminator));
         prob_file << "M_S,p_value\n";
 
         // Initialize the number of pseudo-experiments and toys
-        nPseudoExps = std::stoi(config["nPseudoExps"]);
-        nToys = std::stoi(config["nToys"]);
+        nPseudoExps = config["nPseudoExps"].get<int>();
+        nToys = config["nToys"].get<int>();
+        auto runType = config["runType"].get<std::string>();
+        double mass = config["mass"].get<double>();
 
         // Check the runType for this instance
-        if(config["runType"] == "full") {
+        if(runType == "full") {
             // Perform the analysis over the entire file
             std::cout << "Running full analysis over all data points\n\n";
             for(auto point : data)
                 analysisRun(point, prob_file);
         }
-        else if(config["runType"] == "point") {
-            if(config["mass"] == "") {
+        else if(runType == "point") {
+            if(!mass) {
                 // If the mass point is not specified for analysis, exit with an error
                 throw std::runtime_error("Error: Please specify a mass point to be analysed\n");
             }
             else {
                 // Search for the index of the point with the specified mass
-                double mass = std::stod(config["mass"]);
                 auto it = std::find_if(data.begin(), data.end(),
                                     [mass](const DataPoint& p) {return p.m_s == mass;});
                 if(it != data.end()) {
@@ -726,6 +687,8 @@ int main(int argc, char *argv[]) {
         }
         else throw std::runtime_error("Error: Please specify a valid work mode for the program\n");
 
+        pathFile.close();
+        configFile.close();
         prob_file.close();
 
     }

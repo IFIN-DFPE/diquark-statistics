@@ -34,7 +34,7 @@ void plot_cls() {
     gStyle->SetLabelSize(0.04, "XYZ");
 
     for(int i = 700; i <= 875; i += 25) {
-        TFile* in_file = TFile::Open(Form("results/mChi1_5/roofit_results/out_D900/output_S%d.root", i), "READ");
+        TFile* in_file = TFile::Open(Form("results/yuu_02/mChi1_5/roofit_results/out_D925/output_S%d.root", i), "READ");
         masses.push_back(double(i)/100);
 
         TH1F* hCLS = (TH1F*)in_file->Get("hCLS");
@@ -111,8 +111,8 @@ void plot_cls() {
     legend->Draw();
     c->Update();
     c->Draw();
-    if(std::filesystem::create_directories("results/mChi1_5/graphs/out_D900"))
+    if(std::filesystem::create_directories("results/yuu_02/mChi1_5/graphs/out_D925"))
     ;
-    c->SaveAs("results/mChi1_5/graphs/out_D900/chi15_cls_scan.pdf");
+    c->SaveAs("results/yuu_02/mChi1_5/graphs/out_D925/chi1_5_cls_scan.pdf");
 
 }

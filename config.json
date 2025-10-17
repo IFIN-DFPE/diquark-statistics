@@ -1,0 +1,8 @@
+{
+    "discriminator": 0.95,
+    "runType": "full",
+    "mass": 7.0,
+    "nPseudoExps": 100,
+    "nToys": 100,
+    "process": "ChiChi_yuu02_mChi20"
+}

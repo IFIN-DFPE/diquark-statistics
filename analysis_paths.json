@@ -1,0 +1,16 @@
+{
+    "ChiChi_yuu02_mChi15": "ChiChi/yuu_02/mChi1_5",
+    "ChiChi_yuu02_mChi20": "ChiChi/yuu_02/mChi2",
+    "ChiChi_yuu04_mChi15": "ChiChi/yuu_04/mChi1_5",
+    "ChiChi_yuu04_mChi20": "ChiChi/yuu_04/mChi2",
+
+    "uChi_yuu02_mChi15": "uChi/yuu_02/mChi1_5",
+    "uChi_yuu02_mChi20": "uChi/yuu_02/mChi2",
+    "uChi_yuu04_mChi15": "uChi/yuu_04/mChi1_5",
+    "uChi_yuu04_mChi20": "uChi/yuu_04/mChi2",
+
+    "ht-ht_bbt-bbt": "new_channels/ht-ht_bbt-bbt",
+    "wb-ht_jjb-bbt": "new_channels/wb-ht_jjb-bbt",
+    "wb-zt": "new_channels/wb-zt",
+    "zt-ht_jjt-bbt": "new_channels/zt-ht_jjt-bbt"
+}
