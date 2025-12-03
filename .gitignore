@@ -1,9 +1,9 @@
 # IDE files
-.vscode
+.vscode/
 # Results directories
-/ChiChi/*
-/new_channels/*
-/uChi/*
+ChiChi/
+new_channels/
+uChi/
 # Executables
 roofit_pval
 roofit_stats
