@@ -7,6 +7,7 @@
 #include <vector>
 #include <filesystem>
 
+#include "nlohmann/json.hpp"
 #include "TGraphAsymmErrors.h"
 #include "TLegend.h"
 #include "TH1D.h"
@@ -23,8 +24,22 @@ std::vector<double> medians;
 std::vector<double> sig1_lo, sig1_hi;
 std::vector<double> sig2_lo, sig2_hi;
 
+std::string path, process;
 
 void plot_cls() {
+
+    // Load the file containing the paths
+    std::ifstream pathFile("analysis_paths.json");
+    nlohmann::json paths = nlohmann::json::parse(pathFile);
+
+    // Load the configuration file
+    std::ifstream configFile("config_plot.json");
+    nlohmann::json config = nlohmann::json::parse(configFile);
+    auto discriminator = int(config["discriminator_1"].get<float>()*1000);
+    process = config["process_1"].get<std::string>();
+    path = paths[process].get<std::string>();
+
+
 
     gROOT->SetBatch(1);
     gStyle->SetTextFont(42);
@@ -34,7 +49,8 @@ void plot_cls() {
     gStyle->SetLabelSize(0.04, "XYZ");
 
     for(int i = 700; i <= 875; i += 25) {
-        TFile* in_file = TFile::Open(Form("results/yuu_02/mChi1_5/roofit_results/out_D925/output_S%d.root", i), "READ");
+        std::string inputPath = path + Form("/roofit_results/out_D%d/output_S%d.root", discriminator, i);
+        TFile* in_file = TFile::Open(inputPath.c_str(), "READ");
         masses.push_back(double(i)/100);
 
         TH1F* hCLS = (TH1F*)in_file->Get("hCLS");
@@ -70,20 +86,19 @@ void plot_cls() {
 
     TLine* line_lim = new TLine(gMedian->GetXaxis()->GetXmin(), 0.05, gMedian->GetXaxis()->GetXmax(), 0.05);
     TLatex* label = new TLatex(masses.front()-0.05, 0.055, "95\% C.L.");
-    TLatex* chiMass = new TLatex(masses.front(), 0.7, "M_{#chi} = 1.5 TeV");
 
     gMedian->SetLineColor(kBlack);
     gMedian->SetLineStyle(2);
     gMedian->SetLineWidth(2);
     gSig1->SetFillColor(38);
-    gSig2->SetTitle(";M_{S} [TeV];CL_{S}");
+    gSig2->SetTitle(";M_{S} [TeV];CL_{s}");
+    gSig2->GetXaxis()->SetTitleOffset(1.2);
     gSig2->SetFillColor(kOrange-4);
     line_lim->SetLineColor(46);
     line_lim->SetLineWidth(2);
     line_lim->SetLineStyle(1);
     label->SetTextColor(46);
     label->SetTextSize(0.04);
-    chiMass->SetTextSize(0.04);
 
     gSig2->GetYaxis()->SetRangeUser(0., 1.);
     gSig2->Draw("A3");
@@ -91,28 +106,28 @@ void plot_cls() {
     gMedian->Draw("L SAME");
     line_lim->Draw("SAME");
     label->Draw("SAME");
-    chiMass->Draw("SAME");
 
 
-    TLegend* legend = new TLegend(0.15, 0.7, 0.4, 0.88);
-    legend->AddEntry(gMedian, "Median expected CL_{S}", "l");
+    TLegend* legend = new TLegend(0.15, 0.6, 0.4, 0.88);
+    legend->AddEntry(gMedian, "Median expected CL_{s}", "l");
     legend->AddEntry(gSig1, "#pm1#sigma", "f");
     legend->AddEntry(gSig2, "#pm2#sigma", "f");
     legend->AddEntry(line_lim, "#alpha = 0.05", "l");
+    legend->AddEntry((TObject*)0, "m_{#chi} = 1.5 TeV", "");
+    legend->AddEntry((TObject*)0, "y_{uu} = 0.2", "");
     legend->SetTextSize(0.04);
     legend->SetFillStyle(0);
     legend->SetFillColor(0);
     legend->SetLineStyle(0);
     legend->SetLineColor(0);
-    
 
-    // c->SetGrid();
-    // c->RedrawAxis("g");
     legend->Draw();
     c->Update();
     c->Draw();
-    if(std::filesystem::create_directories("results/yuu_02/mChi1_5/graphs/out_D925"))
-    ;
-    c->SaveAs("results/yuu_02/mChi1_5/graphs/out_D925/chi1_5_cls_scan.pdf");
+    
+    std::string outputPdf = path + "/graphs/" + process + "_cls_scan.pdf";
+    std::string outputPng = path + "/graphs/" + process + "_cls_scan.png";
+    c->SaveAs(outputPdf.c_str());
+    c->SaveAs(outputPng.c_str());
 
 }

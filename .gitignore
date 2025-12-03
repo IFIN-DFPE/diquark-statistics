@@ -1,2 +1,10 @@
+# IDE files
 .vscode
+# Results directories
+/ChiChi/*
+/new_channels/*
+/uChi/*
+# Executables
+roofit_pval
+roofit_stats
 

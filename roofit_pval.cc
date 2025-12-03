@@ -47,54 +47,8 @@
 /*
 ======================== RUNNING FROM SCRIPT ================================
     It is enough to run the command:
-    ./run_roofit.sh
+    ./run_pval.sh
     and the program will be compiled and run with the parameters given in stats.ini
-*/
-
-
-
-/*
-======================== COMPILATION INSTRUCTIONS ================================
-    g++ -O3 `root-config --cflags --libs` -l RooStats -l RooFitCore -l RooFit -o roofit_stats roofit_stats.cc
-======================= or if it doesn't work, try: ==============================
-    g++ -O3 roofit_stats.cc `root-config --cflags` -o roofit_stats -L$ROOTSYS/lib -lRooFitCore -lRooFit -lRooStats `root-config --glibs`
-*/
-
-
-
-/*
-========================== RUNNING INSTRUCTIONS ==================================
-    ./roofit_stats.cc stats.ini
-    stats.ini contains the following initialization parameters
-        - discriminator: the discriminator D used in machine learning
-        - runType: can take two values depending on the working mode desired
-            - full: runs the analysis over all masses
-            - point: runs the analysis on a single mass point
-        - mass: if runType = point, specify the mass of Suu for the analysis
-        - nPseudoExps: the number of pseudo-experiments to be run
-        - nToys: the number of toys generated for each pseudo-experiment
-
-*/
-
-
-
-/*
-    In what follows the terminology is:
-        - PSEUDOEXPERIMENT = Monte Carlo (MC) sampled under the bkg-only hypothesis WITH DEFAULT YIELD.
-                            We treat this "first layer" as real data, in the absence of signal,
-                            i.e. what one would do with experimental data once one has it.
-                            These must be performed many times for each parameter-space point in order
-                            to count how often such a point is excluded at a certain confidence level.
-        - TOY = MC sampled under either S+B or B-only hypothesis with YIELD FIXED TO THE ONE OBTAINED FROM
-                FITTING the pseudoexperiment (there can be variations here). The point is that "toys" are
-                always sampled, even when one has real data, to construct the distribution of the test statistic
-                under the two competing hypotheses. Each pseudo-experiment is then excluded or not via
-                CLS using these distributions.
-
-    The test statistic is q_mu as defined here:
-        - https://indico.cern.ch/event/126652/contributions/1343592/attachments/80222/115004/Frequentist_Limit_Recommendation.pdf
-        - https://cds.cern.ch/record/1379837
-    but with mu = 1. N.B. mu_hat is still there, just normal "mu" is set to 1.
 */
 
 
@@ -210,7 +164,7 @@ PseudoExperimentResult runPseudoExp(PseudoExperimentInput input) {
     RooRealVar sigmaS("sigmaS", "Std dev of true signal yield", 1. + point.sigma_sig / point.sig, 1.0001, 100.);
     sigmaS.setConstant();
     // Define shape
-        RooLognormal constraint_yield_sig("constraint_yield_sig", "constraint_yield_sig", S0_obs, S0_true, sigmaS);
+    RooLognormal constraint_yield_sig("constraint_yield_sig", "constraint_yield_sig", S0_obs, S0_true, sigmaS);
 
     // The famous scale "mu". mu=1 means full effect of signal. mu=0 means no signal.
     RooRealVar mu("mu", "signal multiplier", 1.0, 0.0, 1.0);
@@ -218,13 +172,6 @@ PseudoExperimentResult runPseudoExp(PseudoExperimentInput input) {
     // define "full" signal yield
     RooFormulaVar total_signal("total_signal", "mu*S0_true", RooArgList(mu, S0_true));
 
-    // Plot the shape of the signal PDF
-    // RooPlot *frameSigConstraint = S0_obs.frame(0., 30., 50);
-    // frameSigConstraint->SetTitle("Signal yield constraint shape");
-    // TCanvas *cSigConstraint = new TCanvas("cSigConstraint", "cSigConstraint");
-    // constraint_yield_sig.plotOn(frameSigConstraint);
-    // frameSigConstraint->Draw();
-    // cSigConstraint->Update();
 
     // ================ background yield ===============================
     // "Observed" background yield. This you obtained from simulation.
@@ -237,14 +184,6 @@ PseudoExperimentResult runPseudoExp(PseudoExperimentInput input) {
     sigmaB.setConstant();
     // shape the constraint for the background
     RooLognormal constraint_yield_bkg("constraint_yield_bkg", "Yield constraint shape for bkg", B0_obs, B0_true, sigmaB);
-
-    // Plot the shape of the background PDF
-    // RooPlot *frameBkgConstraint = B0_obs.frame(0., 20., 50);
-    // frameBkgConstraint->SetTitle("Bkg yield constraint shape");
-    // TCanvas *cBkgConstraint = new TCanvas("cBkgConstraint", "cBkgConstraint");
-    // constraint_yield_bkg.plotOn(frameBkgConstraint);
-    // frameBkgConstraint->Draw();
-    // cBkgConstraint->Update();
 
     // define the extended pdfs (i.e. shapes x poisson term)
     // Notice they are extended on the XX_true variable
@@ -286,31 +225,31 @@ PseudoExperimentResult runPseudoExp(PseudoExperimentInput input) {
     globals.assign(*ds_global->get(0));
 
     // 2. Main data
-    mu.setVal(0.0); // we're generating bkg-only PSEUDOEXPERIMENT, so turn off the signal
+    mu.setVal(1.0); // we're generating s+b PSEUDOEXPERIMENT
     mu.setConstant(true);
     RooDataSet *ds = sb_full.generate({mass}, RooFit::Extended());
     ds->setGlobalObservables(globals); // set global observables so that RooFit does not fit S0_obs and B0_obs
 
 
-    // fit to s+b and record parameters and nll
-    // set and fix mu to 1.0, meaning full signal strength
+    // fit to b and record parameters and nll
+    // set and fix mu to 0.0, meaning background only
     sb_params.assign(*sb_params_default_vals);
-    mu.setVal(1.0);
+    mu.setVal(0.0);
     mu.setConstant(true);
 
-    RooFitResult *result_mu;
-    result_mu = sb_full.fitTo(*ds, RooFit::Minimizer("Minuit2", "Migrad"), RooFit::PrintLevel(-1),
+    RooFitResult *result_0;
+    result_0 = sb_full.fitTo(*ds, RooFit::Minimizer("Minuit2", "Migrad"), RooFit::PrintLevel(-1),
                                             RooFit::PrintEvalErrors(-1), RooFit::Warnings(false),
                                             RooFit::Verbose(false), RooFit::Save(), RooFit::GlobalObservables(globals));
 
     // std::cout << "================ mu=1 fit ==============================" << std::endl;
     // result_mu->Print("V");
-    Double_t nll_mu = result_mu->minNll();
+    Double_t nll_0 = result_0->minNll();
     RooArgSet *params_fit_sb = sb_params.snapshot();
     // params_fit_sb->Print("V");
 
 
-    // fit to b-only and record parameters and nll
+    // fit to s+b and record parameters and nll
     // allow mu to float as described in the documents.
     mu.setVal(1E-5);
     mu.setConstant(false);
@@ -321,8 +260,8 @@ PseudoExperimentResult runPseudoExp(PseudoExperimentInput input) {
     // result_mu_hat->Print("V");
     Double_t nll_mu_hat = result_mu_hat->minNll();
     // construct the test statistic of the "observed" data
-    // Q = -2 ln (L(mu=1)/L(mu_hat)) = -2 * (ln(L(mu=1)) - ln(L(mu_hat))) = 2*(nll(mu=1) - nll(mu_hat))
-    Double_t q_obs = 2. * (nll_mu - nll_mu_hat);
+    // Q = -2 ln (L(mu=0)/L(mu_hat)) = -2 * (ln(L(mu=0)) - ln(L(mu_hat))) = 2*(nll(mu=0) - nll(mu_hat))
+    Double_t q_obs = 2. * (nll_0 - nll_mu_hat);
 
 
     // fit under pure background to find nuissance parameters
@@ -338,12 +277,7 @@ PseudoExperimentResult runPseudoExp(PseudoExperimentInput input) {
 
 
     // Build distribution of q under b-only and count how many times the TOY has a higher q than the PSEUDOEXPERIMENT.
-    // This number is 1-CLB (as defined in https://cds.cern.ch/record/1379837/files/NOTE2011_005.pdf)
     Double_t n_higher_bkg = 0.0;
-    // histogram for the distribution of q under B-only
-    // This will show that when using the "unconstrained" ensemble, the q_mu dsitributions do not depend on the pseudoexperiment
-    // So one can derive them only once. In this code we do not use this property, but it's very nice to have in mind.
-
 
     std::cout << "Starting pseudo-experiment #" << index << "\n" << std::flush;
     const auto startFull = std::chrono::high_resolution_clock::now();
@@ -351,7 +285,6 @@ PseudoExperimentResult runPseudoExp(PseudoExperimentInput input) {
     {
         const auto startToy = std::chrono::high_resolution_clock::now();
         // OPTION 1. Set the bkg yield to the one obtained from the PSEUDOEXPERIMENT fit.
-        // sb_params.assign(*params_fit_b);
         sb_params.assign(*params_fit_b);
 
 
@@ -362,13 +295,16 @@ PseudoExperimentResult runPseudoExp(PseudoExperimentInput input) {
         mu.setVal(0.0);
         RooDataSet *ds_toy = sb_full.generate({mass}, RooFit::Extended());
         ds_toy->setGlobalObservables(globals);
-        mu.setVal(1.0);
+
+        // Fit under the mu = 0 hypothesis
+        mu.setVal(0.0);
         mu.setConstant(true);
-        RooFitResult *result_mu_toy = sb_full.fitTo(*ds_toy, RooFit::Minimizer("Minuit2", "Migrad"), RooFit::PrintLevel(-1),
+        RooFitResult *result_0_toy = sb_full.fitTo(*ds_toy, RooFit::Minimizer("Minuit2", "Migrad"), RooFit::PrintLevel(-1),
                                                     RooFit::PrintEvalErrors(-1), RooFit::Warnings(false),
                                                     RooFit::Verbose(false), RooFit::Save(), RooFit::GlobalObservables(globals));
-        Double_t nll_mu_toy = result_mu_toy->minNll();
+        Double_t nll_0_toy = result_0_toy->minNll();
 
+        // Fit under the mu_hat hypothesis
         // mu.setVal(1E-5);
         mu.setConstant(false);
         RooFitResult *result_mu_hat_toy = sb_full.fitTo(*ds_toy, RooFit::Minimizer("Minuit2", "Migrad"), RooFit::PrintLevel(-1),
@@ -376,9 +312,9 @@ PseudoExperimentResult runPseudoExp(PseudoExperimentInput input) {
                                                         RooFit::Verbose(false), RooFit::Save(), RooFit::GlobalObservables(globals));
         Double_t nll_mu_hat_toy = result_mu_hat_toy->minNll();
 
-        Double_t q_toy = 2. * (nll_mu_toy - nll_mu_hat_toy);
-        delete result_mu_toy;
-        result_mu_toy = nullptr;
+        Double_t q_toy = 2. * (nll_0_toy - nll_mu_hat_toy);
+        delete result_0_toy;
+        result_0_toy = nullptr;
         delete result_mu_hat_toy;
         result_mu_hat_toy=nullptr;
         delete ds_toy;
@@ -392,8 +328,6 @@ PseudoExperimentResult runPseudoExp(PseudoExperimentInput input) {
             n_higher_bkg += 1.0;
         }
 
-
-        // remove the line below if you want to do debug printing.
         const auto stopToy = std::chrono::high_resolution_clock::now();
         auto durationToy = std::chrono::duration_cast<std::chrono::microseconds>(stopToy - startToy);
         auto durationPE = std::chrono::duration_cast<std::chrono::milliseconds>(stopToy - startPseudoExp);
@@ -402,92 +336,20 @@ PseudoExperimentResult runPseudoExp(PseudoExperimentInput input) {
         Double_t durationToyNice = durationToy.count() / 1000.; // ms
         Double_t durationPENice = durationNow.count() / 1000.;  // s
         Double_t durationNowNice = durationNow.count() / 1000.; // s
-        if ((i_toy+1) % (nToys / 2) == 0)
+        if ((i_toy+1) == nToys)
         {
             std::cout << " Duration: " << durationNowNice << "[s]\n" << std::flush;
         }
     }
 
-    // Build distribution of q under S+B and count how many times the TOY has a higher q than the PSEUDOEXPERIMENT.
-    // This number is CLSB (as defined in https://cds.cern.ch/record/1379837/files/NOTE2011_005.pdf)
-    Double_t n_higher_sb = 0.0;
-    for (Int_t i_toy = 0; i_toy < nToys; ++i_toy)
-    {
-        const auto startToy = std::chrono::high_resolution_clock::now();
-        // OPTION 1. set the signal and bkg yield to the one obtained from the PSEUDOEXPERIMENT fit.
-        sb_params.assign(*sb_params_default_vals);
+    
 
-        // sb_full->generate(b_params);
-        // OPTION 2. Sample the signal and bkg yield before generating the PSEUDOEXPERIMENTS.
-        // NOT a frequentist construction, but we should not fear this.
-        RooDataSet *ds_global_toy = sb_full.generate(globals, 1);
-        globals.assign(*ds_global_toy->get(0));
-        mu.setVal(1.0);
-        RooDataSet *ds_toy = sb_full.generate({mass}, RooFit::Extended());
-        ds_toy->setGlobalObservables(globals);
-        mu.setVal(1.0);
-        mu.setConstant(true);
-        RooFitResult *result_mu_toy = sb_full.fitTo(*ds_toy, RooFit::Minimizer("Minuit2", "Migrad"), RooFit::PrintLevel(-1),
-                                                    RooFit::PrintEvalErrors(-1), RooFit::Warnings(false),
-                                                    RooFit::Verbose(false), RooFit::Save(), RooFit::GlobalObservables(globals));
-        Double_t nll_mu_toy = result_mu_toy->minNll();
-        mu.setVal(1E-5);
-        mu.setConstant(false);
-        RooFitResult *result_mu_hat_toy = sb_full.fitTo(*ds_toy, RooFit::Minimizer("Minuit2", "Migrad"), RooFit::PrintLevel(-1),
-                                                        RooFit::PrintEvalErrors(-1), RooFit::Warnings(false),
-                                                        RooFit::Verbose(false), RooFit::Save(), RooFit::GlobalObservables(globals));
-        Double_t nll_mu_hat_toy = result_mu_hat_toy->minNll();
-
-        Double_t q_toy = 2. * (nll_mu_toy - nll_mu_hat_toy);
-
-        delete result_mu_toy;
-        result_mu_toy = nullptr;
-        delete result_mu_hat_toy;
-        result_mu_hat_toy=nullptr;
-        delete ds_toy;
-        ds_toy = nullptr;
-        delete ds_global_toy;
-        ds_global_toy = nullptr;
-
-
-        if (q_toy >= q_obs)
-        {
-            n_higher_sb += 1.0;
-        }
-
-        // remove the line below if you want to do debug printing.
-        const auto stopToy = std::chrono::high_resolution_clock::now();
-        auto durationToy = std::chrono::duration_cast<std::chrono::microseconds>(stopToy - startToy);
-        auto durationPE = std::chrono::duration_cast<std::chrono::milliseconds>(stopToy - startPseudoExp);
-        auto durationNow = std::chrono::duration_cast<std::chrono::milliseconds>(stopToy - startFull);
-
-        Double_t durationToyNice = durationToy.count() / 1000.; // ms
-        Double_t durationPENice = durationNow.count() / 1000.;  // s
-        Double_t durationNowNice = durationNow.count() / 1000.; // s
-        if ((i_toy+1) % (nToys / 2) == 0)
-        {
-            std::cout << " Duration: " << durationNowNice << "[s]\n" << std::flush;
-        }
-    }
-
-    // Computation of CLs. Exactly as described in the notes
-    Double_t clSB = (1.0 * n_higher_sb) / (1.0 * nToys);
-    Double_t clB = (1.0 * n_higher_bkg) / (1.0 * nToys);
-    Double_t CLS = clB > 0. ? clSB / clB : 0.0;
     PseudoExperimentResult result;
-    result.hCLS = TH1D(Form("hCLS_%d", index), "CLS", 100, 0., 1.);
-    result.hCLS.Fill(CLS);
-    result.hCLSB = TH1D(Form("hCLSB_%d", index), "CLSB", 100, 0., 1.);
-    result.hCLSB.Fill(clSB);
-    result.hCLB = TH1D(Form("hCLB_%d", index), "1-CLB", 100, 0., 1.);
-    result.hCLB.Fill(clB);
-    // Assume 95% confindence level
-    if (CLS < 0.05)
-    {
-        result.nTimesExcluded = 1.0;
-    }
-    result.nTotalSB = n_higher_sb;
+
+    result.nTotalB = n_higher_bkg;
     result.experimentIndex = index;
+
+
 
     return result;
 }
@@ -498,15 +360,10 @@ PseudoExperimentResult runPseudoExp(PseudoExperimentInput input) {
     Function that performs the statistical analysis and checks if the points are excluded or not
     As an argument, pass the DataPoint associated to a given mass of Suu
 */
-void analysisRun(DataPoint point) {
+void analysisRun(DataPoint point, std::ofstream &prob_file) {
 
     std::cout << Form("=== Running analysis for M_S = %.2f TeV ===\n", point.m_s);
 
-    // Number of PSEUDOEXPERIMENTS. Recommend 100 at least, maybe 1000
-    // Number of TOYS per PSEUDOEXPERIMENTS. Recommend 1000 at least, maybe 10000
-    TH1D hTimeBkgToy("hTimeBkgToy", "Bkg toys; Toy time [ms]", 100, 0., 20.);
-    TH1D hTimeSBToy("hTimeSBToy", "SB toys; Toy time [ms]", 100, 0., 20.);
-    TH1D hTimePseudoExp("hTimePseudoExp", "Pseudo-experiments; PE time [s]", 100, 0., 20. * nToys / 1000.);
 
     // Create a pool of processes (size = number of CPU cores by default)
     ROOT::TProcessExecutor pool(96);
@@ -520,82 +377,23 @@ void analysisRun(DataPoint point) {
     // Run in parallel: each process executes runPseudoExperiment
     PseudoExperimentResult results = pool.MapReduce(runPseudoExp, inputs, [] (const std::vector<PseudoExperimentResult>& results) {
         PseudoExperimentResult combined;
-        combined.hCLS = TH1D(Form("hCLS_combined_%d", results.front().experimentIndex), "CLS", 100, 0., 1.);
-        combined.hCLSB = TH1D(Form("hCLSB_combined_%d", results.front().experimentIndex), "CLSB", 100, 0., 1.);
-        combined.hCLB = TH1D(Form("hCLB_combined_%d", results.front().experimentIndex), "1-CLB", 100, 0., 1.);
-        combined.nTimesExcluded = 0.0;
-        combined.nTotalSB = 0.0;
+        combined.nTotalB = 0.0;
 
         for (const auto& res : results) {
-            combined.hCLS.Add(&res.hCLS);
-            combined.hCLSB.Add(&res.hCLSB);
-            combined.hCLB.Add(&res.hCLB);
-            combined.nTimesExcluded += res.nTimesExcluded;
-            combined.nTotalSB += res.nTotalSB;
+            combined.nTotalB += res.nTotalB;
         }
 
         return combined;
     });
 
     // Counter to check how often we exclude the parameter point (in which the signal yield is what it is above).
-    Double_t nTimesExcluded = results.nTimesExcluded;
-
-    std::cout << std::endl;
-    Double_t ratioExcluded = (1.0*nTimesExcluded)/(1.0*nPseudoExps);
-    std::cout << "Point excluded " << 100*ratioExcluded << "\% of the time.";
-    if (ratioExcluded < 0.0228){
-        std::cout << " It is outside the +-2sigma band; below the median";
-    }
-    else if (ratioExcluded < 0.1587){
-        std::cout << "It is in the +-2sigma band, below the median";
-    }
-    else if (ratioExcluded < 0.5){
-        std::cout << "It is in the +-1sigma band, below the median";
-    }
-    else if (ratioExcluded < 0.843){
-        std::cout << "It is in the +-1sigma band, above the median";
-    }
-    else if (ratioExcluded < 0.9772){
-        std::cout << "It is in the +- 2 sigma band, above the median";
-    }
-    else{
-        std::cout << "It is outside the +-2sigma band, above the median";
-    }
-    std::cout << std::endl;
-
-    if(std::filesystem::create_directories(path + Form("/roofit_results/out_D%d", discriminator)))
-    ;
-    std::string out_path = path + Form("/roofit_results/out_D%d/output_S%d.root", discriminator, int(point.m_s*100));
-    TFile *output_file = TFile::Open(out_path.c_str(), "RECREATE");
-    // dsitributions of CLS, CLSB and CLB
-    TH1D hCLS("hCLS", "CLS", 100, 0., 1.);
-    hCLS.Add(&results.hCLS);
-    TH1D hCLSB("hCLSB", "CLSB", 100, 0., 1.);
-    hCLSB.Add(&results.hCLSB);
-    TH1D hCLB("hCLB", "1-CLB", 100, 0., 1.);
-    hCLB.Add(&results.hCLB);
+    Double_t nTotalB = results.nTotalB;
 
 
-    TCanvas c_cls("c_cls", "c_cls");
-    c_cls.Divide(3, 1);
-    c_cls.cd(1);
-    hCLS.DrawCopy();
-    c_cls.cd(2);
-    hCLSB.DrawCopy();
-    c_cls.cd(3);
-    hCLB.DrawCopy();
+    prob_file << std::fixed << std::setprecision(2) << point.m_s << "," << std::setprecision(5) << std::scientific << nTotalB/(nPseudoExps*nToys) << '\n';
+    std::cout << std::fixed << std::setprecision(2);
 
-    TCanvas c_time("c_time", "c_time", 1600, 600);
-    c_time.Divide(3, 1);
-    c_time.cd(1);
-    hTimeBkgToy.DrawCopy();
-    c_time.cd(2);
-    hTimeSBToy.DrawCopy();
-    c_time.cd(3);
-    hTimePseudoExp.DrawCopy();
 
-    output_file->Write();
-    output_file->Close();
     std::cout << "Done\n\n" << std::endl;
 }
 
@@ -640,7 +438,8 @@ int main(int argc, char *argv[]) {
         path = paths[process].get<std::string>();
         std::string dataFile = path + Form("/signal_yields/sig_bkg_D%d.csv", discriminator);
         std::vector<DataPoint> data = read_CSV(dataFile);
-
+        std::ofstream prob_file(path + Form("/roofit_results/out_D%d/p_values.csv", discriminator));
+        prob_file << "M_S,p_value\n";
 
         // Initialize the number of pseudo-experiments and toys
         nPseudoExps = config["nPseudoExps"].get<int>();
@@ -653,7 +452,7 @@ int main(int argc, char *argv[]) {
             // Perform the analysis over the entire file
             std::cout << "Running full analysis over all data points\n\n";
             for(auto point : data)
-                analysisRun(point);
+                analysisRun(point, prob_file);
         }
         else if(runType == "point") {
             if(!mass) {
@@ -668,7 +467,7 @@ int main(int argc, char *argv[]) {
                     size_t idx = std::distance(data.begin(), it);
                     // Perform the analysis only on the specified point
                     std::cout << "Running single point analysis\n\n";
-                    analysisRun(data[idx]);
+                    analysisRun(data[idx], prob_file);
                 }
                 else {
                     throw std::runtime_error("Error: Please input a valid mass point\n");
@@ -679,6 +478,7 @@ int main(int argc, char *argv[]) {
 
         pathFile.close();
         configFile.close();
+        prob_file.close();
 
     }
     catch(const std::exception& exc) {

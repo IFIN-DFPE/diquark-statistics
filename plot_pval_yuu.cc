@@ -6,6 +6,7 @@
 #include <vector>
 #include <filesystem>
 
+#include "nlohmann/json.hpp"
 #include "TGraph.h"
 #include "TObject.h"
 #include "TLegend.h"
@@ -23,7 +24,9 @@ struct p_val_points{
     std::vector<double> p_vals;
 };
 
-p_val_points HtHt_pvals, WbHt_pvals;
+p_val_points chi1_5, chi2;
+std::string path1, process1, path2, process2;
+int d1, d2;
 
 /*
     Function taking as input the path of a .csv datafile and reads it
@@ -76,32 +79,32 @@ void generate_plot() {
     TCanvas* c = new TCanvas("c_pval", "Local p-values", 800, 600);
     c->SetLogy();
 
-    TGraph* gP_val_HtHt = new TGraph(HtHt_pvals.masses.size(), &HtHt_pvals.masses[0], &HtHt_pvals.p_vals[0]);
-    TGraph* gP_val_WbHt = new TGraph(WbHt_pvals.masses.size(), &WbHt_pvals.masses[0], &WbHt_pvals.p_vals[0]);
+    TGraph* gP_val_chi15 = new TGraph(chi1_5.masses.size(), &chi1_5.masses[0], &chi1_5.p_vals[0]);
+    TGraph* gP_val_chi2 = new TGraph(chi2.masses.size(), &chi2.masses[0], &chi2.p_vals[0]);
 
-    gP_val_HtHt->SetTitle(";M_{S} [TeV];Local p-value");
-    gP_val_WbHt->SetMarkerStyle(22);
-    gP_val_WbHt->SetMarkerSize(1.5);
-    gP_val_WbHt->SetLineWidth(2);
-    gP_val_WbHt->SetLineColor(kMagenta+1);
-    gP_val_WbHt->SetMarkerColor(kMagenta+1);
+    gP_val_chi15->SetTitle(";M_{S} [TeV];Local p-value");
+    gP_val_chi2->SetMarkerStyle(22);
+    gP_val_chi2->SetMarkerSize(1.5);
+    gP_val_chi2->SetLineWidth(2);
+    gP_val_chi2->SetLineColor(kMagenta+1);
+    gP_val_chi2->SetMarkerColor(kMagenta+1);
     
-    gP_val_HtHt->SetMarkerStyle(21);
-    gP_val_HtHt->SetMarkerSize(1.5);
-    gP_val_HtHt->SetLineWidth(2);
-    gP_val_HtHt->SetLineColor(kBlue+1);
-    gP_val_HtHt->SetMarkerColor(kBlue+1);
+    gP_val_chi15->SetMarkerStyle(21);
+    gP_val_chi15->SetMarkerSize(1.5);
+    gP_val_chi15->SetLineWidth(2);
+    gP_val_chi15->SetLineColor(kBlue+1);
+    gP_val_chi15->SetMarkerColor(kBlue+1);
 
-    gP_val_HtHt->GetXaxis()->SetRangeUser(7.3, 8.45);
-    gP_val_HtHt->GetYaxis()->SetRangeUser(1e-6, 1.);
+    gP_val_chi15->GetXaxis()->SetRangeUser(6.8, 8.95);
+    gP_val_chi15->GetYaxis()->SetRangeUser(5e-8, 1.);
 
-    gP_val_HtHt->Draw("APL");
-    gP_val_WbHt->Draw("PL SAME");
+    gP_val_chi15->Draw("APL");
+    gP_val_chi2->Draw("PL SAME");
 
 
-    double x_min = gP_val_HtHt->GetXaxis()->GetXmin();
-    double x_max = gP_val_HtHt->GetXaxis()->GetXmax();
-    for (int sigma = 1; sigma <= 4; ++sigma) {
+    double x_min = gP_val_chi15->GetXaxis()->GetXmin();
+    double x_max = gP_val_chi15->GetXaxis()->GetXmax();
+    for (int sigma = 1; sigma <= 5; ++sigma) {
         double z = sigma;
         double pval = 0.5 * TMath::Erfc(z / TMath::Sqrt2());
 
@@ -119,9 +122,10 @@ void generate_plot() {
         label->Draw("SAME");
     }
 
-    TLegend* legend = new TLegend(0.5, 0.15, 0.8, 0.25);
-    legend->AddEntry(gP_val_HtHt, "S_{uu}#rightarrow#chi#chi#rightarrow (h^{0}t)(h^{0}t)", "pl");
-    legend->AddEntry(gP_val_WbHt, "S_{uu}#rightarrow#chi#chi#rightarrow (h^{0}t)(W^{+}b)", "pl");
+    TLegend* legend = new TLegend(0.65, 0.2, 0.85, 0.4);
+    legend->AddEntry(gP_val_chi15, "M_{#chi} = 1.5 TeV", "pl");
+    legend->AddEntry(gP_val_chi2, "M_{#chi} = 2 TeV", "pl");
+    legend->AddEntry((TObject*)0, "D = 0.9", "");
     legend->SetTextSize(0.04);
     legend->SetFillStyle(0);
     legend->SetFillColor(0);
@@ -132,23 +136,37 @@ void generate_plot() {
     c->Update();
     c->Draw();
 
-    c->SaveAs("new_channels/ht-ht_bbt-bbt/graphs/new_channels_local_pvals.pdf");
-    c->SaveAs("new_channels/ht-ht_bbt-bbt/graphs/new_channels_local_pvals.png");
-
-
+    std::string outPdf = path1 + "/graphs/" + process1 + "_local_p_vals_mChi.pdf";
+    std::string outPng = path1 + "/graphs/" + process1 + "_local_p_vals_mChi.png";
+    c->SaveAs(outPdf.c_str());
+    c->SaveAs(outPng.c_str());
 }
 
 
-void plot_pval_new_ch() {
+void plot_pval_yuu() {
 
     gROOT->SetBatch(1);
 
-    try{
-    const char* inputHtHt = "new_channels/ht-ht_bbt-bbt/roofit_results/out_D900/p_values.csv";
-    const char* inputWbHt = "new_channels/wb-ht_jjb-bbt/roofit_results/out_D900/p_values.csv";
+    // Load the file containing the paths
+    std::ifstream pathFile("analysis_paths.json");
+    nlohmann::json paths = nlohmann::json::parse(pathFile);
 
-    HtHt_pvals = read_CSV(inputHtHt);
-    WbHt_pvals = read_CSV(inputWbHt);
+    // Load the configuration file
+    std::ifstream configFile("config_plot.json");
+    nlohmann::json config = nlohmann::json::parse(configFile);
+
+    d1 = int(config["discriminator_1"].get<float>()*1000);
+    d2 = int(config["discriminator_2"].get<float>()*1000);
+    process1 = config["process_1"].get<std::string>();
+    path1 = paths[process1].get<std::string>();
+    std::string input1 = path1 + Form("/roofit_results/out_D%d/p_values.csv", d1);
+    process2 = config["process_2"].get<std::string>();
+    path2 = paths[process2].get<std::string>();
+    std::string input2 = path2 + Form("/roofit_results/out_D%d/p_values.csv", d2);
+
+    try{
+        chi1_5 = read_CSV(input2.c_str());
+        chi2 = read_CSV(input1.c_str());
         generate_plot();
     }
     catch(const std::exception& exc) {

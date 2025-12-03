@@ -26,5 +26,6 @@ struct PseudoExperimentResult {
     TH1D hCLB;
     double nTimesExcluded;
     double nTotalSB;
+    double nTotalB;
 };
 

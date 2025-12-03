@@ -7,6 +7,7 @@
 #include <vector>
 #include <filesystem>
 
+#include "nlohmann/json.hpp"
 #include "TGraphAsymmErrors.h"
 #include "TLegend.h"
 #include "TObject.h"
@@ -32,12 +33,14 @@ struct DataPoint {
     std::vector<double> bkg, sigma_bkg;
 };
 
-ul_point yuu02_limit, yuu04_limit;
-DataPoint yuu02_yield, yuu04_yield;
+ul_point pointLimit1, pointLimit2, pointLimit3;
+DataPoint pointYield1, pointYield2, pointYield3;
+std::string path1, process1, path2, process2, path3, process3;
+int d1, d2, d3;
 
-DataPoint read_yields(const char* inputFile) {
+DataPoint read_yields(std::string inputFile) {
     // Check if user has entered the path to the data file
-    if(!inputFile) {
+    if(inputFile.empty()) {
         throw std::runtime_error("Error: Please enter the name of the data file to be read.\n");
     }
 
@@ -82,9 +85,9 @@ DataPoint read_yields(const char* inputFile) {
 /*
     Function taking as input the path of a .csv datafile and reads it
 */
-ul_point read_CSV(const char* inputFile) {
+ul_point read_CSV(std::string inputFile) {
     // Check if user has entered the path to the data file when running the macro
-    if (!inputFile) throw std::runtime_error("Error: Please enter the name of the data file to be read.\n");
+    if (inputFile.empty()) throw std::runtime_error("Error: Please enter the name of the data file to be read.\n");
 
     // Check if the file can be opened or not
     std::ifstream csvFile(inputFile);
@@ -129,7 +132,6 @@ ul_point read_CSV(const char* inputFile) {
 
 void generate_plot() {
 
-    gROOT->SetBatch(1);
     gStyle->SetTextFont(42);
     gStyle->SetLabelFont(42, "XYZ");
     gStyle->SetTitleFont(42, "XYZ");
@@ -140,80 +142,116 @@ void generate_plot() {
     c->SetLogy();
 
 
-    TGraph* yuu02_lim = new TGraph(yuu02_limit.masses.size(), &yuu02_limit.masses[0], &yuu02_limit.med[0]);
-    TGraph* yuu02_yld = new TGraph(yuu02_yield.m_s.size(), &yuu02_yield.m_s[0], &yuu02_yield.sig[0]);
-    TGraph* yuu04_lim = new TGraph(yuu04_limit.masses.size(), &yuu04_limit.masses[0], &yuu04_limit.med[0]);
-    TGraph* yuu04_yld = new TGraph(yuu04_yield.m_s.size(), &yuu04_yield.m_s[0], &yuu04_yield.sig[0]);
+    TGraph* gLim1 = new TGraph(pointLimit1.masses.size(), &pointLimit1.masses[0], &pointLimit1.med[0]);
+    TGraph* gLim2 = new TGraph(pointLimit2.masses.size(), &pointLimit2.masses[0], &pointLimit2.med[0]);
+    TGraph* gLim3 = new TGraph(pointLimit3.masses.size(), &pointLimit3.masses[0], &pointLimit3.med[0]);
+    TGraph* gYld1 = new TGraph(pointYield1.m_s.size(), &pointYield1.m_s[0], &pointYield1.sig[0]);
+    TGraph* gYld2 = new TGraph(pointYield2.m_s.size(), &pointYield2.m_s[0], &pointYield2.sig[0]);
+    TGraph* gYld3 = new TGraph(pointYield3.m_s.size(), &pointYield3.m_s[0], &pointYield3.sig[0]);
 
 
-    yuu04_yld->SetTitle(";M_{S} [TeV];Event counts");
-    yuu04_yld->SetMarkerStyle(22);
-    yuu04_yld->SetMarkerSize(1.5);
-    yuu04_yld->SetLineWidth(2);
-    yuu04_yld->SetLineColor(kMagenta+1);
-    yuu04_yld->SetMarkerColor(kMagenta+1);
+    gYld1->SetTitle(";M_{S} [TeV];Event counts");
+    gYld1->GetXaxis()->SetTitleOffset(1.2);
+    // gYld1->GetXaxis()->SetNdivisions(310);
+    gYld1->SetMarkerStyle(22);
+    gYld1->SetMarkerSize(1.5);
+    gYld1->SetLineWidth(2);
+    gYld1->SetLineColor(kBlue+1);
+    gYld1->SetMarkerColor(kBlue+1);
 
-    yuu04_lim->SetMarkerStyle(22);
-    yuu04_lim->SetMarkerSize(1.5);
-    yuu04_lim->SetLineWidth(2);
-    yuu04_lim->SetLineStyle(2);
-    yuu04_lim->SetLineColor(kMagenta+1);
-    yuu04_lim->SetMarkerColor(kMagenta+1);
+    gLim1->SetMarkerStyle(22);
+    gLim1->SetMarkerSize(1.5);
+    gLim1->SetLineWidth(2);
+    gLim1->SetLineStyle(7);
+    gLim1->SetLineColor(kBlue+1);
+    gLim1->SetMarkerColor(kBlue+1);
+
+    gYld2->SetMarkerStyle(20);
+    gYld2->SetMarkerSize(1.5);
+    gYld2->SetLineWidth(2);
+    gYld2->SetLineColor(kBlack);
+    gYld2->SetMarkerColor(kBlack);
+
+    gLim2->SetMarkerStyle(20);
+    gLim2->SetMarkerSize(1.5);
+    gLim2->SetLineWidth(2);
+    gLim2->SetLineStyle(7);
+    gLim2->SetLineColor(kBlack);
+    gLim2->SetMarkerColor(kBlack);
+
+    gYld3->SetMarkerStyle(25);
+    gYld3->SetMarkerSize(1.5);
+    gYld3->SetLineWidth(2);
+    gYld3->SetLineColor(kRed-4);
+    gYld3->SetMarkerColor(kRed-4);
+
+    gLim3->SetMarkerStyle(25);
+    gLim3->SetMarkerSize(1.5);
+    gLim3->SetLineWidth(2);
+    gLim3->SetLineStyle(8);
+    gLim3->SetLineColor(kRed-4);
+    gLim3->SetMarkerColor(kRed-4);
     
-    yuu02_yld->SetMarkerStyle(21);
-    yuu02_yld->SetMarkerSize(1.5);
-    yuu02_yld->SetLineWidth(2);
-    yuu02_yld->SetLineColor(kBlue+1);
-    yuu02_yld->SetMarkerColor(kBlue+1);
-
-    yuu02_lim->SetMarkerStyle(21);
-    yuu02_lim->SetMarkerSize(1.5);
-    yuu02_lim->SetLineWidth(2);
-    yuu02_lim->SetLineStyle(2);
-    yuu02_lim->SetLineColor(kBlue+1);
-    yuu02_lim->SetMarkerColor(kBlue+1);
 
 
-    yuu04_yld->GetYaxis()->SetRangeUser(5e-1, 3e2);
-    yuu04_yld->GetXaxis()->SetRangeUser(6.75, 10.);
-    yuu04_yld->GetXaxis()->SetNdivisions(515);
+    gYld1->GetYaxis()->SetRangeUser(5e-1, 3e2);
+    // gYld1->GetXaxis()->SetRangeUser(8.75, 9.75);
 
-    TLine *line = new TLine(8.17, 5e-1, 8.17, 3e2);
-    line->SetLineStyle(9);
-    line->SetLineColor(kRed-4);
-    line->SetLineWidth(2);
-
-    TLine *line1 = new TLine(9.16, 5e-1, 9.16, 3e2);
-    line1->SetLineStyle(10);
+    // TLine *line1 = new TLine(8.16, 5e-1, 8.16, 8e1);
+    // TLine *line1 = new TLine(9.26, 5e-1, 9.26, 3e2);
+    TLine *line1 = new TLine(9.17, 5e-1, 9.17, 3e2);
+    line1->SetLineStyle(9);
     line1->SetLineColor(kRed-4);
     line1->SetLineWidth(2);
 
+    // TLine *line2 = new TLine(9.26, 1e0, 9.26, 4.5e0);
+    TLine *line2 = new TLine(8.18, 5e-1, 8.18, 3e2);
+    // TLine *line2 = new TLine(8.25, 5e-1, 8.25, 8e1);
+    line2->SetLineStyle(10);
+    line2->SetLineColor(kRed-4);
+    line2->SetLineWidth(2);
+
+    TLine *line3 = new TLine(9.282, 1e0, 9.282, 4.5e0);
+    // TLine *line2 = new TLine(9.26, 5e-1, 9.26, 3e2);
+    line3->SetLineStyle(8);
+    line3->SetLineColor(kRed-4);
+    line3->SetLineWidth(2);
 
 
-    TLegend* legend = new TLegend(0.5, 0.7, 0.9, 0.9);
-    legend->AddEntry(yuu02_lim, "#mu^{95}#times S_{ev}, M_{#chi} = 2 TeV, y_{uu} = 0.2", "pl");
-    legend->AddEntry(yuu02_yld, "S_{ev}, M_{#chi} = 2 TeV, y_{uu} = 0.2", "pl");
-    legend->AddEntry(yuu04_lim, "#mu^{95}#times S_{ev}, M_{#chi} = 2 TeV, y_{uu} = 0.4", "pl");
-    legend->AddEntry(yuu04_yld, "S_{ev}, M_{#chi} = 2 TeV, y_{uu} = 0.4", "pl");
+    TLegend* legend = new TLegend(0.65, 0.65, 0.9, 0.9);
+    legend->AddEntry(gLim1, "#mu^{95}#times S_{ev}, y_{uu} = 0.4", "pl");
+    legend->AddEntry(gYld1, "S_{ev}, y_{uu} = 0.4", "pl");    
+    legend->AddEntry(gLim2, "#mu^{95}#times S_{ev}, y_{uu} = 0.2", "pl");
+    legend->AddEntry(gYld2, "S_{ev}, y_{uu} = 0.2", "pl");
+    // legend->AddEntry(gLim3, "#mu^{95}#times S_{ev}, D = 0.925", "pl");
+    // legend->AddEntry(gYld3, "S_{ev}, D = 0.925", "pl");    
+    legend->AddEntry((TObject*)0, "m_{#chi} = 2.0 TeV", "");
+    // legend->AddEntry((TObject*)0, "y_{uu} = 0.4", "");
+
     legend->SetTextSize(0.03);
     // legend->SetFillStyle(0);
     // legend->SetFillColor(0);
     // legend->SetBorderSize(0);
 
-    yuu04_yld->Draw("APL");
-    yuu04_lim->Draw("PL SAME");
-    yuu02_yld->Draw("PL SAME");
-    yuu02_lim->Draw("PL SAME");
-    line->Draw("SAME");
+    gYld1->Draw("APL");
+    gLim1->Draw("PL SAME");
+    gYld2->Draw("PL SAME");
+    gLim2->Draw("PL SAME");
+    // gYld3->Draw("PL SAME");
+    // gLim3->Draw("PL SAME");
     line1->Draw("SAME");
+    line2->Draw("SAME");
+    // line3->Draw("SAME");
     legend->Draw("SAME");
     
 
     c->Update();
     c->Draw();
 
-    c->SaveAs("ChiChi/yuu_02/mChi2/graphs/new_chan_upper_limit_yields.pdf");
-    c->SaveAs("ChiChi/yuu_02/mChi2/graphs/new_chan_upper_limit_yields.png");
+    std::string outPdf = path1 + "/graphs/" + process1 + "_upper_limit_yields.pdf";
+    std::string outPng = path1 + "/graphs/" + process1 + "_upper_limit_yields.png";
+    c->SaveAs(outPdf.c_str());
+    c->SaveAs(outPng.c_str());
 
 }
 
@@ -221,15 +259,37 @@ void plot_ul_yields() {
 
     gROOT->SetBatch(1);
 
+    // Load the file containing the paths
+    std::ifstream pathFile("analysis_paths.json");
+    nlohmann::json paths = nlohmann::json::parse(pathFile);
+
+    // Load the configuration file
+    std::ifstream configFile("config_plot.json");
+    nlohmann::json config = nlohmann::json::parse(configFile);
+
+    auto d1 = int(config["discriminator_1"].get<float>()*1000);
+    auto d2 = int(config["discriminator_2"].get<float>()*1000);
+    auto d3 = int(config["discriminator_3"].get<float>()*1000);
+    process1 = config["process_1"].get<std::string>();
+    process2 = config["process_2"].get<std::string>();
+    process3 = config["process_3"].get<std::string>();
+    path1 = paths[process1].get<std::string>();
+    path2 = paths[process2].get<std::string>();
+    path3 = paths[process3].get<std::string>();
+    std::string inputLim1 = path1 + Form("/roostats_results/out_D%d/upper_limits.csv", d1);
+    std::string inputLim2 = path2 + Form("/roostats_results/out_D%d/upper_limits.csv", d2);
+    std::string inputLim3 = path3 + Form("/roostats_results/out_D%d/upper_limits.csv", d3);
+    std::string inputYld1 = path1 + Form("/signal_yields/sig_bkg_D%d.csv", d1);
+    std::string inputYld2 = path2 + Form("/signal_yields/sig_bkg_D%d.csv", d2);
+    std::string inputYld3 = path3 + Form("/signal_yields/sig_bkg_D%d.csv", d3);
+
     try{
-        const char* inputLimYuu02 = "ChiChi/yuu_02/mChi2/roostats_results/out_D900/upper_limits.csv";
-        const char* inputLimYuu04 = "ChiChi/yuu_04/mChi2/roostats_results/out_D900/upper_limits.csv";
-        const char* inputYldYuu02 = "ChiChi/yuu_02/mChi2/signal_yields/sig_bkg_D900.csv";
-        const char* inputYldYuu04 = "ChiChi/yuu_04/mChi2/signal_yields/sig_bkg_D900.csv";
-        yuu02_limit = read_CSV(inputLimYuu02);
-        yuu04_limit = read_CSV(inputLimYuu04);
-        yuu02_yield = read_yields(inputYldYuu02);
-        yuu04_yield = read_yields(inputYldYuu04);
+        pointLimit1 = read_CSV(inputLim1);
+        pointLimit2 = read_CSV(inputLim2);
+        pointLimit3 = read_CSV(inputLim3);
+        pointYield1 = read_yields(inputYld1);
+        pointYield2 = read_yields(inputYld2);
+        pointYield3 = read_yields(inputYld3);
 
         generate_plot();
     

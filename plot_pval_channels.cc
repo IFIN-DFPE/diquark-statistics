@@ -24,8 +24,9 @@ struct p_val_points{
     std::vector<double> p_vals;
 };
 
-p_val_points Disc1, Disc2;
-std::string path1, process1, path2, process2;
+p_val_points Ch1_pvals, Ch2_pvals;
+std::string path1, process1;
+std::string path2, process2;
 int d1, d2;
 
 /*
@@ -79,32 +80,32 @@ void generate_plot() {
     TCanvas* c = new TCanvas("c_pval", "Local p-values", 800, 600);
     c->SetLogy();
 
-    TGraph* gP_val_D1 = new TGraph(Disc1.masses.size(), &Disc1.masses[0], &Disc1.p_vals[0]);
-    TGraph* gP_val_D2 = new TGraph(Disc2.masses.size(), &Disc2.masses[0], &Disc2.p_vals[0]);
+    TGraph* gP_val_ch1 = new TGraph(Ch1_pvals.masses.size(), &Ch1_pvals.masses[0], &Ch1_pvals.p_vals[0]);
+    TGraph* gP_val_ch2 = new TGraph(Ch2_pvals.masses.size(), &Ch2_pvals.masses[0], &Ch2_pvals.p_vals[0]);
 
-    gP_val_D1->SetTitle(";M_{S} [TeV];Local p-value");
-    gP_val_D1->GetXaxis()->SetTitleOffset(1.2);
-    gP_val_D1->SetMarkerStyle(22);
-    gP_val_D1->SetMarkerSize(1.5);
-    gP_val_D1->SetLineWidth(2);
-    gP_val_D1->SetLineColor(kBlue+1);
-    gP_val_D1->SetMarkerColor(kBlue+1);
+    gP_val_ch1->SetTitle(";M_{S} [TeV];Local p-value");
+    gP_val_ch2->SetMarkerStyle(22);
+    gP_val_ch2->SetMarkerSize(1.5);
+    gP_val_ch2->SetLineWidth(2);
+    gP_val_ch2->SetLineColor(kMagenta+1);
+    gP_val_ch2->SetMarkerColor(kMagenta+1);
+    
+    gP_val_ch1->SetMarkerStyle(21);
+    gP_val_ch1->SetMarkerSize(1.5);
+    gP_val_ch1->SetLineWidth(2);
+    gP_val_ch1->SetLineColor(kBlue+1);
+    gP_val_ch1->SetMarkerColor(kBlue+1);
 
-    gP_val_D2->SetMarkerStyle(20);
-    gP_val_D2->SetMarkerSize(1.5);
-    gP_val_D2->SetLineWidth(2);
-    gP_val_D2->SetLineColor(kBlack);
-    gP_val_D2->SetMarkerColor(kBlack);
+    gP_val_ch1->GetXaxis()->SetRangeUser(7.3, 8.45);
+    gP_val_ch1->GetYaxis()->SetRangeUser(1e-6, 1.);
+
+    gP_val_ch1->Draw("APL");
+    gP_val_ch2->Draw("PL SAME");
 
 
-    gP_val_D1->Draw("APL");
-    gP_val_D2->Draw("PL SAME");
-    gP_val_D1->GetXaxis()->SetRangeUser(6.8, 8.95);
-    gP_val_D1->GetYaxis()->SetRangeUser(1e-8, 1.);
-
-    double x_min = gP_val_D1->GetXaxis()->GetXmin();
-    double x_max = gP_val_D1->GetXaxis()->GetXmax();
-    for (int sigma = 1; sigma <= 5; ++sigma) {
+    double x_min = gP_val_ch1->GetXaxis()->GetXmin();
+    double x_max = gP_val_ch1->GetXaxis()->GetXmax();
+    for (int sigma = 1; sigma <= 4; ++sigma) {
         double z = sigma;
         double pval = 0.5 * TMath::Erfc(z / TMath::Sqrt2());
 
@@ -122,10 +123,9 @@ void generate_plot() {
         label->Draw("SAME");
     }
 
-    TLegend* legend = new TLegend(0.65, 0.25, 0.85, 0.43);
-    legend->AddEntry(gP_val_D1, "D = 0.9", "pl");
-    legend->AddEntry(gP_val_D2, "D = 0.925", "pl");
-    legend->AddEntry((TObject*)0, "m_{#chi} = 2 TeV", "");
+    TLegend* legend = new TLegend(0.5, 0.15, 0.8, 0.25);
+    legend->AddEntry(gP_val_ch1, "S_{uu}#rightarrow#chi#chi#rightarrow (h^{0}t)(h^{0}t)", "pl");
+    legend->AddEntry(gP_val_ch2, "S_{uu}#rightarrow#chi#chi#rightarrow (h^{0}t)(W^{+}b)", "pl");
     legend->SetTextSize(0.04);
     legend->SetFillStyle(0);
     legend->SetFillColor(0);
@@ -136,17 +136,15 @@ void generate_plot() {
     c->Update();
     c->Draw();
 
-
-    std::string outPdf = path1 + "/graphs/" + process1 + "_local_p_vals_D.pdf";
-    std::string outPng = path1 + "/graphs/" + process1 + "_local_p_vals_D.png";
+    std::string outPdf = path1 + "/graphs/" + process1 + "_local_p_vals_channels.pdf";
+    std::string outPng = path1 + "/graphs/" + process1 + "_local_p_vals_channels.png";
     c->SaveAs(outPdf.c_str());
     c->SaveAs(outPng.c_str());
-
 
 }
 
 
-void plot_pval_D() {
+void plot_pval_new_ch() {
 
     gROOT->SetBatch(1);
 
@@ -167,9 +165,10 @@ void plot_pval_D() {
     path2 = paths[process2].get<std::string>();
     std::string input2 = path2 + Form("/roofit_results/out_D%d/p_values.csv", d2);
 
+
     try{
-        Disc1 = read_CSV(input1.c_str());
-        Disc2 = read_CSV(input2.c_str());
+        Ch1_pvals = read_CSV(input1);
+        Ch2_pvals = read_CSV(input2);
         generate_plot();
     }
     catch(const std::exception& exc) {

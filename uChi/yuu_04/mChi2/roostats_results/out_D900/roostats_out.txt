@@ -8,9 +8,9 @@
    ------------------------------------------------------------------
 
 
-Processing roostats_limits_run.cc("uChi/yuu_04/mChi2/signal_yields/sig_bkg_D900.csv")...
+Processing roostats_limits_run.cc("config.json")...
 In file included from input_line_8:1:
-/home/dcostach/diquark/roostats_limits_run.cc:256:89: warning: invalid conversion specifier 'U' [-Wformat-invalid-specifier]
+/home/dcostach/diquark/roostats_limits_run.cc:259:89: warning: invalid conversion specifier 'U' [-Wformat-invalid-specifier]
     HypoTestInverterPlot* plot = new HypoTestInverterPlot("HTI_Result_Plot", Form("95\% Upper Limit scan on #mu for M_{S} = %.2f TeV;#mu;CL_{S}", point.m_s), result);
                                                                                      ~~~^
 Reading data from: uChi/yuu_04/mChi2/signal_yields/sig_bkg_D900.csv

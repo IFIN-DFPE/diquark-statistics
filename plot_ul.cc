@@ -7,6 +7,7 @@
 #include <vector>
 #include <filesystem>
 
+#include "nlohmann/json.hpp"
 #include "TGraphAsymmErrors.h"
 #include "TLegend.h"
 #include "TObject.h"
@@ -24,12 +25,15 @@ std::vector<double> obs, med;
 std::vector<double> sig1_lo, sig1_hi;
 std::vector<double> sig2_lo, sig2_hi;
 
+std::string path, process;
+int discriminator;
+
 /*
     Function taking as input the path of a .csv datafile and reads it
 */
-void read_CSV(const char* inputFile) {
+void read_CSV(std::string inputFile) {
     // Check if user has entered the path to the data file when running the macro
-    if (!inputFile) throw std::runtime_error("Error: Please enter the name of the data file to be read.\n");
+    if (inputFile.empty()) throw std::runtime_error("Error: Please enter the name of the data file to be read.\n");
 
     // Check if the file can be opened or not
     std::ifstream csvFile(inputFile);
@@ -133,10 +137,10 @@ void generate_plot() {
     c->Update();
     c->Draw();
 
-    if(std::filesystem::create_directories("uChi/yuu_04/mChi1_5/graphs/out_D900"))
-    ;
-    c->SaveAs("uChi/yuu_04/mChi1_5/graphs/out_D900/chi1_5_upper_limit.pdf");
-    c->SaveAs("uChi/yuu_04/mChi1_5/graphs/out_D900/chi1_5_upper_limit.png");
+    std::string outPdf = path + "/graphs/" + process + "_upper_limit.pdf";
+    std::string outPng = path + "/graphs/" + process + "_upper_limit.png";
+    c->SaveAs(outPdf.c_str());
+    c->SaveAs(outPng.c_str());
 
 }
 
@@ -144,8 +148,21 @@ void plot_ul() {
 
     gROOT->SetBatch(1);
 
+    // Load the file containing the paths
+    std::ifstream pathFile("analysis_paths.json");
+    nlohmann::json paths = nlohmann::json::parse(pathFile);
+
+    // Load the configuration file
+    std::ifstream configFile("config_plot.json");
+    nlohmann::json config = nlohmann::json::parse(configFile);
+
+    auto discriminator = int(config["discriminator_1"].get<float>()*1000);
+    process = config["process_1"].get<std::string>();
+    path = paths[process].get<std::string>();
+    std::string inputFile = path + Form("/roostats_results/out_D%d/upper_limits.csv", discriminator);
+
+
     try{
-        const char* inputFile = "uChi/yuu_04/mChi1_5/roostats_results/out_D900/upper_limits.csv";
         read_CSV(inputFile);
         generate_plot();
     

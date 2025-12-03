@@ -8,9 +8,9 @@
    ------------------------------------------------------------------
 
 
-Processing roostats_limits_run.cc("uChi/yuu_02/mChi2/signal_yields/sig_bkg_D900.csv")...
+Processing roostats_limits_run.cc("config.json")...
 In file included from input_line_8:1:
-/home/dcostach/diquark/roostats_limits_run.cc:256:89: warning: invalid conversion specifier 'U' [-Wformat-invalid-specifier]
+/home/dcostach/diquark/roostats_limits_run.cc:259:89: warning: invalid conversion specifier 'U' [-Wformat-invalid-specifier]
     HypoTestInverterPlot* plot = new HypoTestInverterPlot("HTI_Result_Plot", Form("95\% Upper Limit scan on #mu for M_{S} = %.2f TeV;#mu;CL_{S}", point.m_s), result);
                                                                                      ~~~^
 Reading data from: uChi/yuu_02/mChi2/signal_yields/sig_bkg_D900.csv
@@ -36,7 +36,7 @@ Edm   = 6.560469588117356332e-07
 Nfcn  = 33
 B0_true	  = 2.27e+01	 +/-  1.67e+00	(limited)
 S0_true	  = 3.90e+01	 +/-  6.64e-02	(limited)
-AsymptoticCalculator::EvaluateNLL -  value = 5.90e+01	fit time : Real time 0:00:00, CP time 0.050
+AsymptoticCalculator::EvaluateNLL -  value = 5.90e+01	fit time : Real time 0:00:00, CP time 0.040
 MakeAsimov: Setting poi mu to a constant value = 0.00e+00
 MakeAsimov: doing a conditional fit for finding best nuisance values 
 Minuit2Minimizer: Minimize with max-calls 1000 convergence for edm < 1.00e+00 strategy 1
