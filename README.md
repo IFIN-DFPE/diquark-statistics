@@ -11,7 +11,6 @@ The exclusion run is performed within [roofit_stats.cc](roofit_stats.cc) which t
  - Generates background-only _pseudo-experiments_ and fits the nuisance parameters under both s+b and b-only hypotheses. After that, it computes the test statistic $q_{\mu}^{obs}$ as defined [here](https://indico.cern.ch/event/126652/contributions/1343592/attachments/80222/115004/Frequentist_Limit_Recommendation.pdf).
  - Generates _toy datasets_ for each pseudo-experiment and computes $q_{\mu}^{toy}$ which is compared to $q_{\mu}^{obs}$ and accumulated for later computations.
  - Computes $CL_S$ as described and compares is to the confidence level set by the user to check if the pseudo-experiment can be excluded.
- - Computes the local p-value as $P(q_{\mu}^{toy}>q_{\mu}^{obs}|M_{S_{uu}})$
  - The results are saved in .root format in the corresponding folder.
 ### Running the code
 The exclusion run code can be executed by calling the [run_roofit.sh](run_roofit.sh) as:
@@ -28,6 +27,19 @@ The exclusion run code can be executed by calling the [run_roofit.sh](run_roofit
  - _nToys_: the number of toys generated for each pseudo-experiment.
  - _process_: the process you want to be analyzed
 
+## Local $p$-value Run
+The computation of the discovery $p$-values is performed within [roofit_pval.cc](roofit_pval.cc). The program loads its work mode from [config.json](config.json) and it performs the statistical analysis as such:
+ - Generates the _Likelihood function_ for given signal and background yields, with lognormal constraints on each.
+ - Generates $s+b$ _pseudo-experiments_ and computes the test statistic $q_{0}^{obs}$ as defined [here](https://indico.cern.ch/event/126652/contributions/1343592/attachments/80222/115004/Frequentist_Limit_Recommendation.pdf).
+ - Generates _toy datasets_ for each pseudo-experiment and computes $q_{0}^{toy}$ which is compared to $q_{0}^{obs}$ and accumulated for later computations.
+ - Computes the local p-value as $P(q_{0}^{toy}>q_{0}^{obs}|M_{S_{uu}})$
+ - The results are saved in .csv format in the corresponding folder.
+### Running the code
+The exclusion run code can be executed by calling the [run_pval.sh](run_pval.sh) as:
+```
+./run_pval.sh
+```
+In order to change working parameters please edit the configuration file [config.json](config.json).
 
 ## Upper Limits Run
 The computation of $\mu^{95}$ is done in [roostats_limits_run.cc](roostats_limits_run.cc), which takes as input one of the files containing the signal and background yields and does the following:

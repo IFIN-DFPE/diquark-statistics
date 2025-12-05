@@ -2,7 +2,7 @@
     "discriminator": 0.9,
     "runType": "full",
     "mass": 7.0,
-    "nPseudoExps": 10000,
+    "nPseudoExps": 1000,
     "nToys": 10000,
-    "process": "ChiChi_yuu02_mChi20"
+    "process": "uChi_uZt_mChi20"
 }

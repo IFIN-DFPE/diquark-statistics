@@ -219,8 +219,8 @@ void generate_plot() {
 
 
     TLegend* legend = new TLegend(0.65, 0.65, 0.9, 0.9);
-    legend->AddEntry(gLim1, "#mu^{95}#times S_{ev}, y_{uu} = 0.4", "pl");
-    legend->AddEntry(gYld1, "S_{ev}, y_{uu} = 0.4", "pl");    
+    legend->AddEntry(gLim1, "#mu^{95}#times S_{ev}, y_{u#chi} = 0.5", "pl");
+    legend->AddEntry(gYld1, "S_{ev}, y_{u#chi} = 0.5", "pl");    
     legend->AddEntry(gLim2, "#mu^{95}#times S_{ev}, y_{uu} = 0.2", "pl");
     legend->AddEntry(gYld2, "S_{ev}, y_{uu} = 0.2", "pl");
     // legend->AddEntry(gLim3, "#mu^{95}#times S_{ev}, D = 0.925", "pl");
