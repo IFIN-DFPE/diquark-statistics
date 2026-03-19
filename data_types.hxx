@@ -14,8 +14,17 @@ struct DataPoint {
     double bkg, sigma_bkg;
 };
 
+struct SignalUncertainties {
+    double m_s;
+    double lumi_uncrt;
+    double JER_uncrt, JES_uncrt;
+    double PDF_uncrt;
+    double scale_uncrt_hi, scale_uncrt_lo;
+};
+
 struct PseudoExperimentInput {
     DataPoint point;
+    SignalUncertainties uncrt;
     int experimentIndex;
 };
 

@@ -197,9 +197,9 @@ void generate_plot() {
     gYld1->GetYaxis()->SetRangeUser(5e-1, 3e2);
     // gYld1->GetXaxis()->SetRangeUser(8.75, 9.75);
 
-    // TLine *line1 = new TLine(8.16, 5e-1, 8.16, 8e1);
+    TLine *line1 = new TLine(8.15, 5e-1, 8.15, 8e1);
     // TLine *line1 = new TLine(9.26, 5e-1, 9.26, 3e2);
-    TLine *line1 = new TLine(9.17, 5e-1, 9.17, 3e2);
+    // TLine *line1 = new TLine(9.17, 5e-1, 9.17, 3e2);
     line1->SetLineStyle(9);
     line1->SetLineColor(kRed-4);
     line1->SetLineWidth(2);
@@ -221,8 +221,8 @@ void generate_plot() {
     TLegend* legend = new TLegend(0.65, 0.65, 0.9, 0.9);
     legend->AddEntry(gLim1, "#mu^{95}#times S_{ev}, y_{u#chi} = 0.5", "pl");
     legend->AddEntry(gYld1, "S_{ev}, y_{u#chi} = 0.5", "pl");    
-    legend->AddEntry(gLim2, "#mu^{95}#times S_{ev}, y_{uu} = 0.2", "pl");
-    legend->AddEntry(gYld2, "S_{ev}, y_{uu} = 0.2", "pl");
+    // legend->AddEntry(gLim2, "#mu^{95}#times S_{ev}, y_{uu} = 0.2", "pl");
+    // legend->AddEntry(gYld2, "S_{ev}, y_{uu} = 0.2", "pl");
     // legend->AddEntry(gLim3, "#mu^{95}#times S_{ev}, D = 0.925", "pl");
     // legend->AddEntry(gYld3, "S_{ev}, D = 0.925", "pl");    
     legend->AddEntry((TObject*)0, "m_{#chi} = 2.0 TeV", "");
@@ -235,12 +235,12 @@ void generate_plot() {
 
     gYld1->Draw("APL");
     gLim1->Draw("PL SAME");
-    gYld2->Draw("PL SAME");
-    gLim2->Draw("PL SAME");
+    // gYld2->Draw("PL SAME");
+    // gLim2->Draw("PL SAME");
     // gYld3->Draw("PL SAME");
     // gLim3->Draw("PL SAME");
     line1->Draw("SAME");
-    line2->Draw("SAME");
+    // line2->Draw("SAME");
     // line3->Draw("SAME");
     legend->Draw("SAME");
     
