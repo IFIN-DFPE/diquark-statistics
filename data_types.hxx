@@ -9,17 +9,21 @@
         - the theoretical background yield and its uncertainty
 */
 struct DataPoint {
-    double m_s;
-    double sig, sigma_sig;
-    double bkg, sigma_bkg;
+    double m_s; 
+    double sig, sig_ml_uncrt;
+    double hjj, hjj_ml_uncrt;
+    double wj, wj_ml_uncrt;
+    double qq2gg, qq2gg_ml_uncrt;
 };
 
 struct SignalUncertainties {
     double m_s;
     double lumi_uncrt;
     double JER_uncrt, JES_uncrt;
-    double PDF_uncrt;
-    double scale_uncrt_hi, scale_uncrt_lo;
+    double sig_PDF_uncrt, sig_scale_uncrt_hi, sig_scale_uncrt_lo;
+    double hjj_PDF_uncrt, hjj_scale_uncrt_hi, hjj_scale_uncrt_lo;
+    double wj_PDF_uncrt, wj_scale_uncrt_hi, wj_scale_uncrt_lo;
+    double qq2gg_PDF_uncrt, qq2gg_scale_uncrt_hi, qq2gg_scale_uncrt_lo;
 };
 
 struct PseudoExperimentInput {

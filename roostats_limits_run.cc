@@ -72,16 +72,20 @@ std::string path;
 */
 struct DataPoint {
     double m_s; 
-    double sig, sigma_sig;
-    double bkg, sigma_bkg;
+    double sig, sig_ml_uncrt;
+    double hjj, hjj_ml_uncrt;
+    double wj, wj_ml_uncrt;
+    double qq2gg, qq2gg_ml_uncrt;
 };
 
 struct SignalUncertainties {
     double m_s;
-    double PDF_uncrt;
-    double scale_uncrt_hi, scale_uncrt_lo;
-    double JER_uncrt, JES_uncrt;
     double lumi_uncrt;
+    double JER_uncrt, JES_uncrt;
+    double sig_PDF_uncrt, sig_scale_uncrt_hi, sig_scale_uncrt_lo;
+    double hjj_PDF_uncrt, hjj_scale_uncrt_hi, hjj_scale_uncrt_lo;
+    double wj_PDF_uncrt, wj_scale_uncrt_hi, wj_scale_uncrt_lo;
+    double qq2gg_PDF_uncrt, qq2gg_scale_uncrt_hi, qq2gg_scale_uncrt_lo;
 };
 
 /*
@@ -122,11 +126,19 @@ vector<DataPoint> read_CSV(std::string inputFile) {
         // Signal values
         if(getline(str, cell, ',')) point.sig = stod(cell);
         // Signal uncertainties
-        if(getline(str, cell, ',')) point.sigma_sig = stod(cell);
+        if(getline(str, cell, ',')) point.sig_ml_uncrt= stod(cell);
         // Background values
-        if(getline(str, cell, ',')) point.bkg = stod(cell);
+        if(getline(str, cell, ',')) point.hjj = stod(cell);
         // Background uncertainties
-        if(getline(str, cell, ',')) point.sigma_bkg = stod(cell);
+        if(getline(str, cell, ',')) point.hjj_ml_uncrt = stod(cell);
+        // Background values
+        if(getline(str, cell, ',')) point.wj = stod(cell);
+        // Background uncertainties
+        if(getline(str, cell, ',')) point.wj_ml_uncrt = stod(cell);
+        // Background values
+        if(getline(str, cell, ',')) point.qq2gg = stod(cell);
+        // Background uncertainties
+        if(getline(str, cell, ',')) point.qq2gg_ml_uncrt = stod(cell);
             
         data.push_back(point);
     }
@@ -142,13 +154,10 @@ vector<DataPoint> read_CSV(std::string inputFile) {
     // Print the read data for debugging
     cout << "\n=== Summary by Mass Points ===\n";
     cout << "M_s [TeV]\t"
-         << "SIG\t\t\t" 
-         << "BKG\n";
+         << "SIG\t\t\t";
     for (const DataPoint point : data)
         cout << fixed << setprecision(2) << point.m_s << "\t\t" << scientific 
-             << point.sig << " ± " << point.sigma_sig << "\t"
-             << point.bkg << " ± " << point.sigma_bkg << "\n";
-    cout << "\n";
+             << point.sig << " ± " << point.sig_ml_uncrt << '\n';
 
     return data;
 }
@@ -186,11 +195,29 @@ vector<SignalUncertainties> read_uncrt(std::string inputFile) {
         // Mass values
         if(getline(str, cell, ',')) point.m_s = stod(cell);
         // PDF uncertainty
-        if(getline(str, cell, ',')) point.PDF_uncrt = stod(cell);
+        if(getline(str, cell, ',')) point.sig_PDF_uncrt = stod(cell);
         // Scale uncertainty (high)
-        if(getline(str, cell, ',')) point.scale_uncrt_hi = stod(cell);
+        if(getline(str, cell, ',')) point.sig_scale_uncrt_hi = stod(cell);
         // Scale uncertainty (low)
-        if(getline(str, cell, ',')) point.scale_uncrt_lo = stod(cell);
+        if(getline(str, cell, ',')) point.sig_scale_uncrt_lo = stod(cell);
+        // PDF uncertainty
+        if(getline(str, cell, ',')) point.hjj_PDF_uncrt = stod(cell);
+        // Scale uncertainty (high)
+        if(getline(str, cell, ',')) point.hjj_scale_uncrt_hi = stod(cell);
+        // Scale uncertainty (low)
+        if(getline(str, cell, ',')) point.hjj_scale_uncrt_lo = stod(cell);
+        // PDF uncertainty
+        if(getline(str, cell, ',')) point.wj_PDF_uncrt = stod(cell);
+        // Scale uncertainty (high)
+        if(getline(str, cell, ',')) point.wj_scale_uncrt_hi = stod(cell);
+        // Scale uncertainty (low)
+        if(getline(str, cell, ',')) point.wj_scale_uncrt_lo = stod(cell);
+        // PDF uncertainty
+        if(getline(str, cell, ',')) point.qq2gg_PDF_uncrt = stod(cell);
+        // Scale uncertainty (high)
+        if(getline(str, cell, ',')) point.qq2gg_scale_uncrt_hi = stod(cell);
+        // Scale uncertainty (low)
+        if(getline(str, cell, ',')) point.qq2gg_scale_uncrt_lo = stod(cell);
         // JER uncertainty
         if(getline(str, cell, ',')) point.JER_uncrt = stod(cell);
         // JES uncertainty
@@ -238,13 +265,23 @@ vector<double> point_exclusion(DataPoint point, SignalUncertainties uncrt, TFile
     RooUniform sig_shape("sig_shape", "sig_shape", mass);
     RooUniform bkg_shape("bkg_shape", "bkg_shape", mass);
 
-    // "Observed" yield from the simulation
-    RooRealVar S0_obs("S0_obs", "Signal yield from simulation", point.sig, point.sig/2, point.sig*2);
-    // "True" yield from fitting
-    RooRealVar S0_true("S0_true", "True signal yield", point.sig, point.sig/2, point.sig*2);
 
-    // ML uncertainty of the yield, using lognormal so we don't run into numerical issues
-    RooRealVar sigmaML_sig("sigmaML", "Std dev of true signal yield", 1. + point.sigma_sig / point.sig, 1.0001, 100.);
+    /*
+        !!!!!!!!!!!!!!!!!!!!!!!!
+        !!!                  !!!
+        !!!   Signal Model   !!!
+        !!!                  !!!
+        !!!!!!!!!!!!!!!!!!!!!!!!
+    */
+
+
+    // "Observed" yield from the simulation
+    RooRealVar S0_obs("S0_obs", "Signal yield from simulation", point.sig, 1E-6, point.sig*5);
+    // "True" yield from fitting
+    RooRealVar S0_true("S0_true", "True signal yield", point.sig, 1E-6, point.sig*5);
+
+    // ML uncertainty of the signal yield, using lognormal so we don't run into numerical issues
+    RooRealVar sigmaML_sig("sigmaML", "Std dev of true signal yield", 1. + point.sig_ml_uncrt / point.sig, 1.0001, 100.);
     sigmaML_sig.setConstant();
     RooLognormal constraint_ML_sig("constraint_ML_sig", "constraint_ML_sig", S0_obs, S0_true, sigmaML_sig);
 
@@ -273,7 +310,7 @@ vector<double> point_exclusion(DataPoint point, SignalUncertainties uncrt, TFile
     RooLognormal constraint_JES("constraint_JES", "constraint_JES", glob_JES, theta_JES, sigmaJES);
 
     // PDF uncertainty for signal 
-    RooRealVar sigmaPDF_sig("sigmaPDF_sig", "std dev of PDF uncertainty for signal", 1.0 + uncrt.PDF_uncrt/100, 1.0001, 100.);
+    RooRealVar sigmaPDF_sig("sigmaPDF_sig", "std dev of PDF uncertainty for signal", 1.0 + uncrt.sig_PDF_uncrt/100, 1.0001, 100.);
     sigmaPDF_sig.setConstant();
     RooRealVar theta_PDF_sig("theta_PDF_sig", "PDF uncertainty for signal", 1., 1E-6, 5.);
     RooRealVar glob_PDF_sig("glob_PDF_sig", "global observable for PDF uncertainty for signal", 1., 1E-6, 5.);
@@ -286,9 +323,9 @@ vector<double> point_exclusion(DataPoint point, SignalUncertainties uncrt, TFile
         Easier to implement as a bifurcated Gaussian distribution, pulling on the parameters differently to the left and to the right
     */
     RooRealVar theta_scale_sig("theta_scale_sig", "scale uncertainty for signal", 1., 1E-6, 5.);
-    RooRealVar sigma_scale_sig_hi("sigma_scale_sig_hi", "std dev of scale uncertainty for signal (upward)", uncrt.scale_uncrt_hi/100, 1E-6, 5.);
+    RooRealVar sigma_scale_sig_hi("sigma_scale_sig_hi", "std dev of scale uncertainty for signal (upward)", uncrt.sig_scale_uncrt_hi/100, 1E-6, 5.);
     sigma_scale_sig_hi.setConstant();
-    RooRealVar sigma_scale_sig_lo("sigma_scale_sig_lo", "std dev of scale uncertainty for signal (downward)", uncrt.scale_uncrt_lo/100, 1E-6, 5.);
+    RooRealVar sigma_scale_sig_lo("sigma_scale_sig_lo", "std dev of scale uncertainty for signal (downward)", uncrt.sig_scale_uncrt_lo/100, 1E-6, 5.);
     sigma_scale_sig_lo.setConstant();
     RooRealVar mean_scale_sig("mean_scale_sig", "mean of scale uncertainty for signal", 1., 1E-6, 5.);
     mean_scale_sig.setConstant();
@@ -299,27 +336,112 @@ vector<double> point_exclusion(DataPoint point, SignalUncertainties uncrt, TFile
     // Complete signal expression
     RooFormulaVar total_signal("total_signal", "@0*@1*@2*@3*@4*@5*@6", RooArgList(mu, S0_true, theta_lumi, theta_JER, theta_JES, theta_PDF_sig, theta_scale_sig));
 
+    /*
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        !!!                           !!!
+        !!!   H+jj Background Model   !!!
+        !!!                           !!!
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    */
+    
+    RooRealVar bkg_jjh_obs("bkg_jjh_obs", "Background yield from simulation for jjh", point.hjj, 1E-6, point.hjj*5);
+    RooRealVar bkg_jjh_true("bkg_jjh_true", "True Background yield for jjh", point.hjj, 1E-6, point.hjj*5);
+    
+    RooRealVar sigmaML_bkg_jjh("sigmaML_bkg_jjh", "std dev of background yield for jjh", 1.0 + point.hjj_ml_uncrt / point.hjj, 1.0001, 100.);
+    sigmaML_bkg_jjh.setConstant();
+    RooLognormal constraint_ML_bkg_jjh("constraint_ML_bkg_jjh", "Yield constraint shape for jjh bkg", bkg_jjh_obs, bkg_jjh_true, sigmaML_bkg_jjh);
 
-    // "Observed" yield from the simulation
-    RooRealVar B0_obs("B0_obs", "Background yield from simulation", point.bkg, point.bkg/2, point.bkg*2);
-    // "True" yield from fitting
-    RooRealVar B0_true("B0_true", "True Background yield", point.bkg, point.bkg/2, point.bkg*2);
-    // Uncertainty of the yield, using lognormal so we don't run into numerical issues
-    RooRealVar sigmaML_bkg("sigmaML_bkg", "std dev of background yield", 1.0 + point.sigma_bkg / point.bkg, 1.01, 100.);
-    sigmaML_bkg.setConstant();
-    RooLognormal constraint_ML_bkg("constraint_ML_bkg", "Yield constraint shape for bkg", B0_obs, B0_true, sigmaML_bkg);
+    RooRealVar sigmaPDF_bkg_jjh("sigmaPDF_bkg_jjh", "std dev of PDF uncertainty for jjh", 1.0 + uncrt.hjj_PDF_uncrt/100, 1.0001, 100.);
+    sigmaPDF_bkg_jjh.setConstant();
+    RooRealVar theta_PDF_bkg_jjh("theta_PDF_bkg_jjh", "PDF uncertainty for jjh", 1., 1E-6, 5.);
+    RooRealVar glob_PDF_bkg_jjh("glob_PDF_bkg_jjh", "global observable for PDF uncertainty for jjh", 1., 1E-6, 5.);
+    glob_PDF_bkg_jjh.setConstant();
+    RooLognormal constraint_PDF_bkg_jjh("constraint_PDF_bkg_jjh", "constraint_PDF_bkg_jjh", glob_PDF_bkg_jjh, theta_PDF_bkg_jjh, sigmaPDF_bkg_jjh);
 
-    // Effective background uncertainty
-    RooRealVar theta_eff_bkg("theta_eff_bkg", "Effective background uncertainty", 1., 1E-6, 5.);
-    RooRealVar glob_eff_bkg("glob_eff_bkg", "Global observable for effective background uncertainty", 1., 1E-6, 5.);
-    glob_eff_bkg.setConstant();
-    RooRealVar sigma_eff_bkg("sigma_eff_bkg", "std dev of effective background uncertainty", 1.0 + 0.7, 1.0001, 5.);
-    sigma_eff_bkg.setConstant();
-    RooLognormal constraint_eff_bkg("constraint_eff_bkg", "constraint_eff_bkg", glob_eff_bkg, theta_eff_bkg, sigma_eff_bkg);
+    RooRealVar theta_scale_bkg_jjh("theta_scale_bkg_jjh", "scale uncertainty for jjh", 1., 1E-6, 5.);
+    RooRealVar sigma_scale_bkg_jjh_hi("sigma_scale_bkg_jjh_hi", "std dev of scale uncertainty for jjh (upward)", uncrt.hjj_scale_uncrt_hi/100, 1E-6, 5.);
+    sigma_scale_bkg_jjh_hi.setConstant();
+    RooRealVar sigma_scale_bkg_jjh_lo("sigma_scale_bkg_jjh_lo", "std dev of scale uncertainty for jjh (downward)", uncrt.hjj_scale_uncrt_lo/100, 1E-6, 5.);
+    sigma_scale_bkg_jjh_lo.setConstant();
+    RooRealVar mean_scale_bkg_jjh("mean_scale_bkg_jjh", "mean of scale uncertainty for jjh", 1., 1E-6, 5.);
+    mean_scale_bkg_jjh.setConstant();
+    RooBifurGauss constraint_scale_bkg_jjh("constraint_scale_bkg_jjh", "constraint_scale_bkg_jjh", theta_scale_bkg_jjh, mean_scale_bkg_jjh, sigma_scale_bkg_jjh_lo, sigma_scale_bkg_jjh_hi);
+
+    RooFormulaVar total_bkg_jjh("total_bkg_jjh", "@0*@1*@2*@3*@4*@5", RooArgList(bkg_jjh_true, theta_lumi, theta_JER, theta_JES, theta_PDF_bkg_jjh, theta_scale_bkg_jjh));
+
+
+    /*
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        !!!                          !!!
+        !!!   W+j Background Model   !!!
+        !!!                          !!!
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    */
+
+    RooRealVar bkg_wj_obs("bkg_wj_obs", "Background yield from simulation for wj", point.wj, 1E-6, point.wj*5);
+    RooRealVar bkg_wj_true("bkg_wj_true", "True Background yield for wj", point.wj, 1E-6, point.wj*5);
+
+    RooRealVar sigmaML_bkg_wj("sigmaML_bkg_wj", "std dev of background yield for wj", 1.0 + point.wj_ml_uncrt / point.wj, 1.0001, 100.);
+    sigmaML_bkg_wj.setConstant();
+    RooLognormal constraint_ML_bkg_wj("constraint_ML_bkg_wj", "Yield constraint shape for wj bkg", bkg_wj_obs, bkg_wj_true, sigmaML_bkg_wj);
+
+    RooRealVar sigmaPDF_bkg_wj("sigmaPDF_bkg_wj", "std dev of PDF uncertainty for wj", 1.0 + uncrt.wj_PDF_uncrt/100, 1.0001, 100.);
+    sigmaPDF_bkg_wj.setConstant();
+    RooRealVar theta_PDF_bkg_wj("theta_PDF_bkg_wj", "PDF uncertainty for wj", 1., 1E-6, 5.);
+    RooRealVar glob_PDF_bkg_wj("glob_PDF_bkg_wj", "global observable for PDF uncertainty for wj", 1., 1E-6, 5.);
+    glob_PDF_bkg_wj.setConstant();
+    RooLognormal constraint_PDF_bkg_wj("constraint_PDF_bkg_wj", "constraint_PDF_bkg_wj", glob_PDF_bkg_wj, theta_PDF_bkg_wj, sigmaPDF_bkg_wj);
+
+    RooRealVar theta_scale_bkg_wj("theta_scale_bkg_wj", "scale uncertainty for wj", 1., 1E-6, 5.);
+    RooRealVar sigma_scale_bkg_wj_hi("sigma_scale_bkg_wj_hi", "std dev of scale uncertainty for wj (upward)", uncrt.wj_scale_uncrt_hi/100, 1E-6, 5.);
+    sigma_scale_bkg_wj_hi.setConstant();
+    RooRealVar sigma_scale_bkg_wj_lo("sigma_scale_bkg_wj_lo", "std dev of scale uncertainty for wj (downward)", uncrt.wj_scale_uncrt_lo/100, 1E-6, 5.);
+    sigma_scale_bkg_wj_lo.setConstant();
+    RooRealVar mean_scale_bkg_wj("mean_scale_bkg_wj", "mean of scale uncertainty for wj", 1., 1E-6, 5.);
+    mean_scale_bkg_wj.setConstant();
+    RooBifurGauss constraint_scale_bkg_wj("constraint_scale_bkg_wj", "constraint_scale_bkg_wj", theta_scale_bkg_wj, mean_scale_bkg_wj, sigma_scale_bkg_wj_lo, sigma_scale_bkg_wj_hi);
+
+    RooFormulaVar total_bkg_wj("total_bkg_wj", "@0*@1*@2*@3*@4*@5", RooArgList(bkg_wj_true, theta_lumi, theta_JER, theta_JES, theta_PDF_bkg_wj, theta_scale_bkg_wj));
+
+
+    /*
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        !!!                             !!!
+        !!!   qq->gg Background Model   !!!
+        !!!                             !!!
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    */
+
+    RooRealVar bkg_qq2gg_obs("bkg_qq2gg_obs", "Background yield from simulation for qq->gg", point.qq2gg, 1E-6, point.qq2gg*5);
+    RooRealVar bkg_qq2gg_true("bkg_qq2gg_true", "True Background yield for qq->gg", point.qq2gg, 1E-6, point.qq2gg*5);
+
+    RooRealVar sigmaML_bkg_qq2gg("sigmaML_bkg_qq2gg", "std dev of background yield for qq->gg", 1.0 + point.qq2gg_ml_uncrt / point.qq2gg, 1.0001, 100.);
+    sigmaML_bkg_qq2gg.setConstant();
+    RooLognormal constraint_ML_bkg_qq2gg("constraint_ML_bkg_qq2gg", "Yield constraint shape for qq->gg bkg", bkg_qq2gg_obs, bkg_qq2gg_true, sigmaML_bkg_qq2gg);
+
+    RooRealVar sigmaPDF_bkg_qq2gg("sigmaPDF_bkg_qq2gg", "std dev of PDF uncertainty for qq->gg", 1.0 + uncrt.qq2gg_PDF_uncrt/100, 1.0001, 100.);
+    sigmaPDF_bkg_qq2gg.setConstant();
+    RooRealVar theta_PDF_bkg_qq2gg("theta_PDF_bkg_qq2gg", "PDF uncertainty for qq->gg", 1., 1E-6, 5.);
+    RooRealVar glob_PDF_bkg_qq2gg("glob_PDF_bkg_qq2gg", "global observable for PDF uncertainty for qq->gg", 1., 1E-6, 5.);
+    glob_PDF_bkg_qq2gg.setConstant();
+    RooLognormal constraint_PDF_bkg_qq2gg("constraint_PDF_bkg_qq2gg", "constraint_PDF_bkg_qq2gg", glob_PDF_bkg_qq2gg, theta_PDF_bkg_qq2gg, sigmaPDF_bkg_qq2gg);
+
+    RooRealVar theta_scale_bkg_qq2gg("theta_scale_bkg_qq2gg", "scale uncertainty for qq->gg", 1., 1E-6, 5.);
+    RooRealVar sigma_scale_bkg_qq2gg_hi("sigma_scale_bkg_qq2gg_hi", "std dev of scale uncertainty for qq->gg (upward)", uncrt.qq2gg_scale_uncrt_hi/100, 1E-6, 5.);
+    sigma_scale_bkg_qq2gg_hi.setConstant();
+    RooRealVar sigma_scale_bkg_qq2gg_lo("sigma_scale_bkg_qq2gg_lo", "std dev of scale uncertainty for qq->gg (downward)", uncrt.qq2gg_scale_uncrt_lo/100, 1E-6, 5.);
+    sigma_scale_bkg_qq2gg_lo.setConstant();
+    RooRealVar mean_scale_bkg_qq2gg("mean_scale_bkg_qq2gg", "mean of scale uncertainty for qq->gg", 1., 1E-6, 5.);
+    mean_scale_bkg_qq2gg.setConstant();
+    RooBifurGauss constraint_scale_bkg_qq2gg("constraint_scale_bkg_qq2gg", "constraint_scale_bkg_qq2gg", theta_scale_bkg_qq2gg, mean_scale_bkg_qq2gg, sigma_scale_bkg_qq2gg_lo, sigma_scale_bkg_qq2gg_hi);
+
+    RooFormulaVar total_bkg_qq2gg("total_bkg_qq2gg", "@0*@1*@2*@3*@4*@5", RooArgList(bkg_qq2gg_true, theta_lumi, theta_JER, theta_JES, theta_PDF_bkg_qq2gg, theta_scale_bkg_qq2gg));
+
 
 
     // Complete background expression
-    RooFormulaVar total_bkg("total_bkg", "@0*@1*@2*@3*@4", RooArgList(B0_true, theta_lumi, theta_JER, theta_JES, theta_eff_bkg));
+    RooRealVar bkg_obs("bkg_obs", "Total background yield from simulation", point.hjj + point.wj + point.qq2gg, 1E-6, (point.hjj + point.wj + point.qq2gg)*5);
+    RooFormulaVar total_bkg("total_bkg", "@0+@1+@2", RooArgList(total_bkg_jjh, total_bkg_wj, total_bkg_qq2gg));
 
 
     // Extend the pdfs over the entire mass region
@@ -328,7 +450,12 @@ vector<double> point_exclusion(DataPoint point, SignalUncertainties uncrt, TFile
 
     // Add up pdfs into the full model
     RooAddPdf sb_tmp("sb_tmp", "sb_tmp", RooArgSet(ext_sig, ext_bkg));
-    RooProdPdf sb_full("sb_full", "sb_full", RooArgSet(sb_tmp, constraint_ML_sig, constraint_ML_bkg, constraint_lumi, constraint_JER, constraint_JES, constraint_PDF_sig, constraint_scale_sig, constraint_eff_bkg));
+    RooProdPdf sb_full("sb_full", "sb_full", RooArgSet(sb_tmp, constraint_ML_sig, constraint_ML_bkg_jjh, constraint_ML_bkg_wj, constraint_ML_bkg_qq2gg, 
+                                                        constraint_lumi, constraint_JER, constraint_JES, 
+                                                        constraint_PDF_sig, constraint_scale_sig, 
+                                                        constraint_PDF_bkg_jjh, constraint_scale_bkg_jjh,
+                                                        constraint_PDF_bkg_wj, constraint_scale_bkg_wj,
+                                                        constraint_PDF_bkg_qq2gg, constraint_scale_bkg_qq2gg));
     
 
     // Create s+b model configuration
@@ -336,9 +463,19 @@ vector<double> point_exclusion(DataPoint point, SignalUncertainties uncrt, TFile
     // Add parameters to the model configuration
     sbModel->SetPdf(sb_full);
     sbModel->SetParametersOfInterest(mu);
-    sbModel->SetNuisanceParameters({S0_true, B0_true, theta_lumi, theta_JER, theta_JES, theta_PDF_sig, theta_scale_sig, theta_eff_bkg});
+    sbModel->SetNuisanceParameters({S0_true, bkg_jjh_true, bkg_wj_true, bkg_qq2gg_true, 
+                                    theta_lumi, theta_JER, theta_JES, 
+                                    theta_PDF_sig, theta_scale_sig, 
+                                    theta_PDF_bkg_jjh, theta_scale_bkg_jjh,
+                                    theta_PDF_bkg_wj, theta_scale_bkg_wj,
+                                    theta_PDF_bkg_qq2gg, theta_scale_bkg_qq2gg});
     sbModel->SetObservables(mass);
-    sbModel->SetGlobalObservables({S0_obs, B0_obs, glob_lumi, glob_JER, glob_JES, glob_PDF_sig, mean_scale_sig, glob_eff_bkg});
+    sbModel->SetGlobalObservables({S0_obs, bkg_jjh_obs, bkg_wj_obs, bkg_qq2gg_obs,
+                                    glob_lumi, glob_JER, glob_JES, 
+                                    glob_PDF_sig, mean_scale_sig, 
+                                    glob_PDF_bkg_jjh, mean_scale_bkg_jjh,
+                                    glob_PDF_bkg_wj, mean_scale_bkg_wj,
+                                    glob_PDF_bkg_qq2gg, mean_scale_bkg_qq2gg});
     sbModel->SetSnapshot(mu);
 
 
@@ -348,13 +485,23 @@ vector<double> point_exclusion(DataPoint point, SignalUncertainties uncrt, TFile
     RooRealVar bPoi = RooRealVar("bPoi", "signal multiplier in b-only model", 0.);
     bPoi.setConstant();
     bModel->SetParametersOfInterest(bPoi);
-    bModel->SetNuisanceParameters({S0_true, B0_true, theta_lumi, theta_JER, theta_JES, theta_PDF_sig, theta_scale_sig, theta_eff_bkg});
+    bModel->SetNuisanceParameters({S0_true, bkg_jjh_true, bkg_wj_true, bkg_qq2gg_true, 
+                                    theta_lumi, theta_JER, theta_JES, 
+                                    theta_PDF_sig, theta_scale_sig, 
+                                    theta_PDF_bkg_jjh, theta_scale_bkg_jjh,
+                                    theta_PDF_bkg_wj, theta_scale_bkg_wj,
+                                    theta_PDF_bkg_qq2gg, theta_scale_bkg_qq2gg});
     bModel->SetObservables(mass);
-    bModel->SetGlobalObservables({S0_obs, B0_obs, glob_lumi, glob_JER, glob_JES, glob_PDF_sig, mean_scale_sig, glob_eff_bkg});
+    bModel->SetGlobalObservables({S0_obs, bkg_jjh_obs, bkg_wj_obs, bkg_qq2gg_obs,
+                                    glob_lumi, glob_JER, glob_JES, 
+                                    glob_PDF_sig, mean_scale_sig, 
+                                    glob_PDF_bkg_jjh, mean_scale_bkg_jjh,
+                                    glob_PDF_bkg_wj, mean_scale_bkg_wj,
+                                    glob_PDF_bkg_qq2gg, mean_scale_bkg_qq2gg});
     bModel->SetSnapshot(bPoi);
 
     // Create dataset       
-    RooDataSet* toyData = sb_full.generate(RooArgSet(S0_obs, B0_obs), 1);
+    RooDataSet* toyData = sb_full.generate(RooArgSet(S0_obs, bkg_jjh_obs, bkg_wj_obs, bkg_qq2gg_obs), 1);
     // Create asymptotic calculator 
     AsymptoticCalculator* asympCalc = new AsymptoticCalculator(*toyData, *bModel, *sbModel);
     asympCalc->SetOneSided(true);
@@ -434,7 +581,7 @@ void roostats_limits_run(const char* configFilePath = nullptr) {
     auto process = config["process"].get<std::string>();
     path = paths[process].get<std::string>();
     std::string inputFilePath = path + Form("/signal_yields/sig_bkg_D%d.csv", discriminator);
-    std::string uncrtFilePath = path + Form("/signal_yields/sig_uncrt.csv");
+    std::string uncrtFilePath = path + Form("/signal_yields/uncrt.csv");
 
     // Read signal yields and uncertainties 
     vector<DataPoint> data = read_CSV(inputFilePath);
