@@ -1,8 +1,7 @@
 {
+    "process": "ChiChi_yuu02_mChi20_vBest",
     "discriminator": 0.9,
-    "runType": "full",
-    "mass": 7.0,
-    "nPseudoExps": 1000,
-    "nToys": 1000,
-    "process": "uChi_yuChi05_mChi20_vBest"
+    "runType": "limits",
+    "calcType": "asymptotic",
+    "nToys": 1000    
 }

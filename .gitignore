@@ -5,14 +5,15 @@ ChiChi/
 new_channels/
 uChi/
 combined/
+configs/
 # Executables
 roofit_pval
 roofit_stats
 roofit_pval_pdf_halved
 roofit_pval_pdf_quarter
-pyhf_test.ipynb
-
 # Log files
 *.log
 *.txt
 *.out
+# Python cache
+__pycache__/
