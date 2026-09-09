@@ -19,7 +19,9 @@ struct DataPoint {
 struct SignalUncertainties {
     double m_s;
     double lumi_uncrt;
-    double JER_uncrt, JES_uncrt;
+    double JES_JER_uncrt;
+    double cone_uncrt;
+    double pileup_uncrt;
     double sig_PDF_uncrt, sig_scale_uncrt_hi, sig_scale_uncrt_lo;
     double hjj_PDF_uncrt, hjj_scale_uncrt_hi, hjj_scale_uncrt_lo;
     double wj_PDF_uncrt, wj_scale_uncrt_hi, wj_scale_uncrt_lo;

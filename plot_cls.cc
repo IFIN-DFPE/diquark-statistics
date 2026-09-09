@@ -116,6 +116,7 @@ void plot_cls() {
     legend->AddEntry((TObject*)0, "m_{#chi} = 1.5 TeV", "");
     legend->AddEntry((TObject*)0, "y_{uu} = 0.2", "");
     legend->SetTextSize(0.04);
+    legend->SetBorderSize(0);
     legend->SetFillStyle(0);
     legend->SetFillColor(0);
     legend->SetLineStyle(0);

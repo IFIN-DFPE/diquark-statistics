@@ -81,7 +81,9 @@ struct DataPoint {
 struct SignalUncertainties {
     double m_s;
     double lumi_uncrt;
-    double JER_uncrt, JES_uncrt;
+    double JES_JER_uncrt;
+    double cone_uncrt;
+    double pileup_uncrt;
     double sig_PDF_uncrt, sig_scale_uncrt_hi, sig_scale_uncrt_lo;
     double hjj_PDF_uncrt, hjj_scale_uncrt_hi, hjj_scale_uncrt_lo;
     double wj_PDF_uncrt, wj_scale_uncrt_hi, wj_scale_uncrt_lo;
@@ -218,12 +220,14 @@ vector<SignalUncertainties> read_uncrt(std::string inputFile) {
         if(getline(str, cell, ',')) point.qq2gg_scale_uncrt_hi = stod(cell);
         // Scale uncertainty (low)
         if(getline(str, cell, ',')) point.qq2gg_scale_uncrt_lo = stod(cell);
-        // JER uncertainty
-        if(getline(str, cell, ',')) point.JER_uncrt = stod(cell);
-        // JES uncertainty
-        if(getline(str, cell, ',')) point.JES_uncrt = stod(cell);
+        // JES_JER uncertainty
+        if(getline(str, cell, ',')) point.JES_JER_uncrt = stod(cell);
+        // cone uncertainty
+        if(getline(str, cell, ',')) point.cone_uncrt = stod(cell);
         // Luminosity uncertainty
         if(getline(str, cell, ',')) point.lumi_uncrt = stod(cell);
+        // Pileup uncertainty
+        if(getline(str, cell, ',')) point.pileup_uncrt = stod(cell);
             
         data.push_back(point);
     }
@@ -293,21 +297,29 @@ vector<double> point_exclusion(DataPoint point, SignalUncertainties uncrt, TFile
     glob_lumi.setConstant();
     RooLognormal constraint_lumi("constraint_lumi", "constraint_lumi", glob_lumi, theta_lumi, sigmaLumi);
 
-    // JER uncertainty, both for signal and background
-    RooRealVar sigmaJER("sigmaJER", "std dev of JER uncertainty", 1.0 + uncrt.JER_uncrt/100, 1.0001, 100.);
-    sigmaJER.setConstant();
-    RooRealVar theta_JER("theta_JER", "JER uncertainty", 1., 1E-6, 5.);
-    RooRealVar glob_JER("glob_JER", "global observable for JER uncertainty", 1., 1E-6, 5.);
-    glob_JER.setConstant();
-    RooLognormal constraint_JER("constraint_JER", "constraint_JER", glob_JER, theta_JER, sigmaJER);
+    // JES_JER uncertainty, both for signal and background
+    RooRealVar sigmaJES_JER("sigmaJES_JER", "std dev of JES_JER uncertainty", 1.0 + uncrt.JES_JER_uncrt/100, 1.0001, 100.);
+    sigmaJES_JER.setConstant();
+    RooRealVar theta_JES_JER("theta_JES_JER", "JES_JER uncertainty", 1., 1E-6, 5.);
+    RooRealVar glob_JES_JER("glob_JES_JER", "global observable for JES_JER uncertainty", 1., 1E-6, 5.);
+    glob_JES_JER.setConstant();
+    RooLognormal constraint_JES_JER("constraint_JES_JER", "constraint_JES_JER", glob_JES_JER, theta_JES_JER, sigmaJES_JER);
 
-    // JES uncertainty, both for signal and background
-    RooRealVar sigmaJES("sigmaJES", "std dev of JES uncertainty", 1.0 + uncrt.JES_uncrt/100, 1.0001, 100.);
-    sigmaJES.setConstant();
-    RooRealVar theta_JES("theta_JES", "JES uncertainty", 1., 1E-6, 5.);
-    RooRealVar glob_JES("glob_JES", "global observable for JES uncertainty", 1., 1E-6, 5.);
-    glob_JES.setConstant();
-    RooLognormal constraint_JES("constraint_JES", "constraint_JES", glob_JES, theta_JES, sigmaJES);
+    // Cone uncertainty, both for signal and background
+    RooRealVar sigmaCone("sigmaCone", "std dev of cone uncertainty", 1.0 + uncrt.cone_uncrt/100, 1.0001, 100.);
+    sigmaCone.setConstant();
+    RooRealVar theta_Cone("theta_Cone", "Cone uncertainty", 1., 1E-6, 5.);
+    RooRealVar glob_Cone("glob_Cone", "global observable for Cone uncertainty", 1., 1E-6, 5.);
+    glob_Cone.setConstant();
+    RooLognormal constraint_Cone("constraint_Cone", "constraint_Cone", glob_Cone, theta_Cone, sigmaCone);
+
+    // Pileup uncertainty, both for signal and background
+    RooRealVar sigmaPileup("sigmaPileup", "std dev of pileup uncertainty", 1.0 + uncrt.pileup_uncrt/100, 1.0001, 100.);
+    sigmaPileup.setConstant();
+    RooRealVar theta_Pileup("theta_Pileup", "Pileup uncertainty", 1., 1E-6, 5.);
+    RooRealVar glob_Pileup("glob_Pileup", "global observable for Pileup uncertainty", 1., 1E-6, 5.);
+    glob_Pileup.setConstant();
+    RooLognormal constraint_Pileup("constraint_Pileup", "constraint_Pileup", glob_Pileup, theta_Pileup, sigmaPileup);
 
     // PDF uncertainty for signal 
     RooRealVar sigmaPDF_sig("sigmaPDF_sig", "std dev of PDF uncertainty for signal", 1.0 + uncrt.sig_PDF_uncrt/100, 1.0001, 100.);
@@ -334,7 +346,7 @@ vector<double> point_exclusion(DataPoint point, SignalUncertainties uncrt, TFile
     // Signal strength multiplier
     RooRealVar mu("mu", "signal multiplier", 1.0, 0.0, 20.);
     // Complete signal expression
-    RooFormulaVar total_signal("total_signal", "@0*@1*@2*@3*@4*@5*@6", RooArgList(mu, S0_true, theta_lumi, theta_JER, theta_JES, theta_PDF_sig, theta_scale_sig));
+    RooFormulaVar total_signal("total_signal", "@0*@1*@2*@3*@4*@5*@6*@7", RooArgList(mu, S0_true, theta_lumi, theta_JES_JER, theta_Cone, theta_Pileup, theta_PDF_sig, theta_scale_sig));
 
     /*
         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -367,7 +379,7 @@ vector<double> point_exclusion(DataPoint point, SignalUncertainties uncrt, TFile
     mean_scale_bkg_jjh.setConstant();
     RooBifurGauss constraint_scale_bkg_jjh("constraint_scale_bkg_jjh", "constraint_scale_bkg_jjh", theta_scale_bkg_jjh, mean_scale_bkg_jjh, sigma_scale_bkg_jjh_lo, sigma_scale_bkg_jjh_hi);
 
-    RooFormulaVar total_bkg_jjh("total_bkg_jjh", "@0*@1*@2*@3*@4*@5", RooArgList(bkg_jjh_true, theta_lumi, theta_JER, theta_JES, theta_PDF_bkg_jjh, theta_scale_bkg_jjh));
+    RooFormulaVar total_bkg_jjh("total_bkg_jjh", "@0*@1*@2*@3*@4*@5*@6", RooArgList(bkg_jjh_true, theta_lumi, theta_JES_JER, theta_Cone, theta_Pileup, theta_PDF_bkg_jjh, theta_scale_bkg_jjh));
 
 
     /*
@@ -401,7 +413,7 @@ vector<double> point_exclusion(DataPoint point, SignalUncertainties uncrt, TFile
     mean_scale_bkg_wj.setConstant();
     RooBifurGauss constraint_scale_bkg_wj("constraint_scale_bkg_wj", "constraint_scale_bkg_wj", theta_scale_bkg_wj, mean_scale_bkg_wj, sigma_scale_bkg_wj_lo, sigma_scale_bkg_wj_hi);
 
-    RooFormulaVar total_bkg_wj("total_bkg_wj", "@0*@1*@2*@3*@4*@5", RooArgList(bkg_wj_true, theta_lumi, theta_JER, theta_JES, theta_PDF_bkg_wj, theta_scale_bkg_wj));
+    RooFormulaVar total_bkg_wj("total_bkg_wj", "@0*@1*@2*@3*@4*@5*@6", RooArgList(bkg_wj_true, theta_lumi, theta_JES_JER, theta_Cone, theta_Pileup, theta_PDF_bkg_wj, theta_scale_bkg_wj));
 
 
     /*
@@ -435,7 +447,7 @@ vector<double> point_exclusion(DataPoint point, SignalUncertainties uncrt, TFile
     mean_scale_bkg_qq2gg.setConstant();
     RooBifurGauss constraint_scale_bkg_qq2gg("constraint_scale_bkg_qq2gg", "constraint_scale_bkg_qq2gg", theta_scale_bkg_qq2gg, mean_scale_bkg_qq2gg, sigma_scale_bkg_qq2gg_lo, sigma_scale_bkg_qq2gg_hi);
 
-    RooFormulaVar total_bkg_qq2gg("total_bkg_qq2gg", "@0*@1*@2*@3*@4*@5", RooArgList(bkg_qq2gg_true, theta_lumi, theta_JER, theta_JES, theta_PDF_bkg_qq2gg, theta_scale_bkg_qq2gg));
+    RooFormulaVar total_bkg_qq2gg("total_bkg_qq2gg", "@0*@1*@2*@3*@4*@5*@6", RooArgList(bkg_qq2gg_true, theta_lumi, theta_JES_JER, theta_Cone, theta_Pileup, theta_PDF_bkg_qq2gg, theta_scale_bkg_qq2gg));
 
 
 
@@ -451,7 +463,7 @@ vector<double> point_exclusion(DataPoint point, SignalUncertainties uncrt, TFile
     // Add up pdfs into the full model
     RooAddPdf sb_tmp("sb_tmp", "sb_tmp", RooArgSet(ext_sig, ext_bkg));
     RooProdPdf sb_full("sb_full", "sb_full", RooArgSet(sb_tmp, constraint_ML_sig, constraint_ML_bkg_jjh, constraint_ML_bkg_wj, constraint_ML_bkg_qq2gg, 
-                                                        constraint_lumi, constraint_JER, constraint_JES, 
+                                                        constraint_lumi, constraint_JES_JER, constraint_Cone, constraint_Pileup,
                                                         constraint_PDF_sig, constraint_scale_sig, 
                                                         constraint_PDF_bkg_jjh, constraint_scale_bkg_jjh,
                                                         constraint_PDF_bkg_wj, constraint_scale_bkg_wj,
@@ -464,14 +476,14 @@ vector<double> point_exclusion(DataPoint point, SignalUncertainties uncrt, TFile
     sbModel->SetPdf(sb_full);
     sbModel->SetParametersOfInterest(mu);
     sbModel->SetNuisanceParameters({S0_true, bkg_jjh_true, bkg_wj_true, bkg_qq2gg_true, 
-                                    theta_lumi, theta_JER, theta_JES, 
+                                    theta_lumi, theta_JES_JER, theta_Cone, theta_Pileup,
                                     theta_PDF_sig, theta_scale_sig, 
                                     theta_PDF_bkg_jjh, theta_scale_bkg_jjh,
                                     theta_PDF_bkg_wj, theta_scale_bkg_wj,
                                     theta_PDF_bkg_qq2gg, theta_scale_bkg_qq2gg});
     sbModel->SetObservables(mass);
     sbModel->SetGlobalObservables({S0_obs, bkg_jjh_obs, bkg_wj_obs, bkg_qq2gg_obs,
-                                    glob_lumi, glob_JER, glob_JES, 
+                                    glob_lumi, glob_JES_JER, glob_Cone, glob_Pileup,
                                     glob_PDF_sig, mean_scale_sig, 
                                     glob_PDF_bkg_jjh, mean_scale_bkg_jjh,
                                     glob_PDF_bkg_wj, mean_scale_bkg_wj,
@@ -486,14 +498,14 @@ vector<double> point_exclusion(DataPoint point, SignalUncertainties uncrt, TFile
     bPoi.setConstant();
     bModel->SetParametersOfInterest(bPoi);
     bModel->SetNuisanceParameters({S0_true, bkg_jjh_true, bkg_wj_true, bkg_qq2gg_true, 
-                                    theta_lumi, theta_JER, theta_JES, 
+                                    theta_lumi, theta_JES_JER, theta_Cone, theta_Pileup,
                                     theta_PDF_sig, theta_scale_sig, 
                                     theta_PDF_bkg_jjh, theta_scale_bkg_jjh,
                                     theta_PDF_bkg_wj, theta_scale_bkg_wj,
                                     theta_PDF_bkg_qq2gg, theta_scale_bkg_qq2gg});
     bModel->SetObservables(mass);
     bModel->SetGlobalObservables({S0_obs, bkg_jjh_obs, bkg_wj_obs, bkg_qq2gg_obs,
-                                    glob_lumi, glob_JER, glob_JES, 
+                                    glob_lumi, glob_JES_JER, glob_Cone, glob_Pileup,
                                     glob_PDF_sig, mean_scale_sig, 
                                     glob_PDF_bkg_jjh, mean_scale_bkg_jjh,
                                     glob_PDF_bkg_wj, mean_scale_bkg_wj,

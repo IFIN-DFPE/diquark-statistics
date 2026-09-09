@@ -84,20 +84,21 @@ void generate_plot() {
     TGraph* gP_val_ch2 = new TGraph(Ch2_pvals.masses.size(), &Ch2_pvals.masses[0], &Ch2_pvals.p_vals[0]);
 
     gP_val_ch1->SetTitle(";M_{S} [TeV];Local p-value");
+    gP_val_ch1->GetXaxis()->SetTitleOffset(1.2);
     gP_val_ch2->SetMarkerStyle(22);
     gP_val_ch2->SetMarkerSize(1.5);
     gP_val_ch2->SetLineWidth(2);
-    gP_val_ch2->SetLineColor(kMagenta+1);
-    gP_val_ch2->SetMarkerColor(kMagenta+1);
+    gP_val_ch2->SetLineColor(kBlue+1);
+    gP_val_ch2->SetMarkerColor(kBlue+1);
     
     gP_val_ch1->SetMarkerStyle(21);
     gP_val_ch1->SetMarkerSize(1.5);
     gP_val_ch1->SetLineWidth(2);
-    gP_val_ch1->SetLineColor(kBlue+1);
-    gP_val_ch1->SetMarkerColor(kBlue+1);
+    gP_val_ch1->SetLineColor(kBlack);
+    gP_val_ch1->SetMarkerColor(kBlack);
 
-    gP_val_ch1->GetXaxis()->SetRangeUser(7.3, 8.45);
-    gP_val_ch1->GetYaxis()->SetRangeUser(1e-6, 1.);
+    gP_val_ch1->GetXaxis()->SetRangeUser(6.8, 8.95);
+    gP_val_ch1->GetYaxis()->SetRangeUser(1e-3, 1.);
 
     gP_val_ch1->Draw("APL");
     gP_val_ch2->Draw("PL SAME");
@@ -105,7 +106,7 @@ void generate_plot() {
 
     double x_min = gP_val_ch1->GetXaxis()->GetXmin();
     double x_max = gP_val_ch1->GetXaxis()->GetXmax();
-    for (int sigma = 1; sigma <= 4; ++sigma) {
+    for (int sigma = 1; sigma <= 3; ++sigma) {
         double z = sigma;
         double pval = 0.5 * TMath::Erfc(z / TMath::Sqrt2());
 
@@ -123,11 +124,13 @@ void generate_plot() {
         label->Draw("SAME");
     }
 
-    TLegend* legend = new TLegend(0.5, 0.15, 0.8, 0.25);
-    legend->AddEntry(gP_val_ch1, "S_{uu}#rightarrow#chi#chi#rightarrow (h^{0}t)(h^{0}t)", "pl");
-    legend->AddEntry(gP_val_ch2, "S_{uu}#rightarrow#chi#chi#rightarrow (h^{0}t)(W^{+}b)", "pl");
+    TLegend* legend = new TLegend(0.6, 0.15, 0.85, 0.35);
+    legend->AddEntry(gP_val_ch1, "S_{uu}#rightarrow u#chi#rightarrow u(h^{0}t)", "pl");
+    legend->AddEntry(gP_val_ch2, "S_{uu}#rightarrow u#chi#rightarrow u(Zt)", "pl");
+    legend->AddEntry((TObject*)0, "m_{#chi} = 2.0 TeV", "");
+    legend->AddEntry((TObject*)0, "y_{uu} = 0.2", "");
     legend->SetTextSize(0.04);
-    legend->SetFillStyle(0);
+    legend->SetFillStyle(1001);
     legend->SetFillColor(0);
     legend->SetLineStyle(0);
     legend->SetLineColor(0);
@@ -144,7 +147,7 @@ void generate_plot() {
 }
 
 
-void plot_pval_new_ch() {
+void plot_pval_channels() {
 
     gROOT->SetBatch(1);
 

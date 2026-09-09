@@ -24,9 +24,9 @@ struct p_val_points{
     std::vector<double> p_vals;
 };
 
-p_val_points chi1_5, chi2;
-std::string path1, process1, path2, process2;
-int d1, d2;
+p_val_points yuu02, yuu04, yuu04_pdf;
+std::string path1, process1, path2, process2, path3, process3;
+int d1, d2, d3;
 
 /*
     Function taking as input the path of a .csv datafile and reads it
@@ -79,32 +79,41 @@ void generate_plot() {
     TCanvas* c = new TCanvas("c_pval", "Local p-values", 800, 600);
     c->SetLogy();
 
-    TGraph* gP_val_chi15 = new TGraph(chi1_5.masses.size(), &chi1_5.masses[0], &chi1_5.p_vals[0]);
-    TGraph* gP_val_chi2 = new TGraph(chi2.masses.size(), &chi2.masses[0], &chi2.p_vals[0]);
+    TGraph* gP_val_yuu02 = new TGraph(yuu04.masses.size(), &yuu02.masses[0], &yuu02.p_vals[0]);
+    TGraph* gP_val_yuu04 = new TGraph(yuu04.masses.size(), &yuu04.masses[0], &yuu04.p_vals[0]);
+    TGraph* gP_val_yuChi05 = new TGraph(yuu04.masses.size(), &yuu04_pdf.masses[0], &yuu04_pdf.p_vals[0]);
 
-    gP_val_chi15->SetTitle(";M_{S} [TeV];Local p-value");
-    gP_val_chi2->SetMarkerStyle(22);
-    gP_val_chi2->SetMarkerSize(1.5);
-    gP_val_chi2->SetLineWidth(2);
-    gP_val_chi2->SetLineColor(kMagenta+1);
-    gP_val_chi2->SetMarkerColor(kMagenta+1);
+    gP_val_yuu04->SetTitle(";M_{S} [TeV];Local p-value");
+    gP_val_yuu04->GetXaxis()->SetTitleOffset(1.2);
+    gP_val_yuu02->SetMarkerStyle(22);
+    gP_val_yuu02->SetMarkerSize(1.5);
+    gP_val_yuu02->SetLineWidth(2);
+    gP_val_yuu02->SetLineColor(kBlue+1);
+    gP_val_yuu02->SetMarkerColor(kBlue+1);
     
-    gP_val_chi15->SetMarkerStyle(21);
-    gP_val_chi15->SetMarkerSize(1.5);
-    gP_val_chi15->SetLineWidth(2);
-    gP_val_chi15->SetLineColor(kBlue+1);
-    gP_val_chi15->SetMarkerColor(kBlue+1);
+    gP_val_yuu04->SetMarkerStyle(20);
+    gP_val_yuu04->SetMarkerSize(1.5);
+    gP_val_yuu04->SetLineWidth(2);
+    gP_val_yuu04->SetLineColor(kBlack);
+    gP_val_yuu04->SetMarkerColor(kBlack);
 
-    gP_val_chi15->GetXaxis()->SetRangeUser(6.8, 8.95);
-    gP_val_chi15->GetYaxis()->SetRangeUser(5e-8, 1.);
+    gP_val_yuChi05->SetMarkerStyle(21);
+    gP_val_yuChi05->SetMarkerSize(1.5);
+    gP_val_yuChi05->SetLineWidth(2);
+    gP_val_yuChi05->SetLineColor(kRed+1);
+    gP_val_yuChi05->SetMarkerColor(kRed+1);
 
-    gP_val_chi15->Draw("APL");
-    gP_val_chi2->Draw("PL SAME");
+    gP_val_yuu04->GetXaxis()->SetRangeUser(6.8, 8.95);
+    gP_val_yuu04->GetYaxis()->SetRangeUser(1e-6, 1.);
+
+    gP_val_yuu04->Draw("APL");
+    gP_val_yuu02->Draw("PL SAME");
+    gP_val_yuChi05->Draw("PL SAME");
 
 
-    double x_min = gP_val_chi15->GetXaxis()->GetXmin();
-    double x_max = gP_val_chi15->GetXaxis()->GetXmax();
-    for (int sigma = 1; sigma <= 5; ++sigma) {
+    double x_min = gP_val_yuu04->GetXaxis()->GetXmin();
+    double x_max = gP_val_yuu04->GetXaxis()->GetXmax();
+    for (int sigma = 1; sigma <= 4; ++sigma) {
         double z = sigma;
         double pval = 0.5 * TMath::Erfc(z / TMath::Sqrt2());
 
@@ -122,12 +131,13 @@ void generate_plot() {
         label->Draw("SAME");
     }
 
-    TLegend* legend = new TLegend(0.65, 0.2, 0.85, 0.4);
-    legend->AddEntry(gP_val_chi15, "M_{#chi} = 1.5 TeV", "pl");
-    legend->AddEntry(gP_val_chi2, "M_{#chi} = 2 TeV", "pl");
-    legend->AddEntry((TObject*)0, "D = 0.9", "");
+    TLegend* legend = new TLegend(0.6, 0.15, 0.85, 0.35);
+    legend->AddEntry(gP_val_yuu02, "y_{u#chi} = 0.1, y_{uu} = 0.2", "pl");
+    legend->AddEntry(gP_val_yuu04, "y_{u#chi} = 0.1, y_{uu} = 0.4", "pl");
+    legend->AddEntry(gP_val_yuChi05, "y_{u#chi} = 0.5, y_{uu} = 0.2", "pl");
+    legend->AddEntry((TObject*)0, "m_{#chi} = 2.0 TeV", "");
     legend->SetTextSize(0.04);
-    legend->SetFillStyle(0);
+    legend->SetFillStyle(1001);
     legend->SetFillColor(0);
     legend->SetLineStyle(0);
     legend->SetLineColor(0);
@@ -136,8 +146,8 @@ void generate_plot() {
     c->Update();
     c->Draw();
 
-    std::string outPdf = path1 + "/graphs/" + process1 + "_local_p_vals_mChi.pdf";
-    std::string outPng = path1 + "/graphs/" + process1 + "_local_p_vals_mChi.png";
+    std::string outPdf = path1 + "/graphs/" + process1 + "_local_p_vals_yuu.pdf";
+    std::string outPng = path1 + "/graphs/" + process1 + "_local_p_vals_yuu.png";
     c->SaveAs(outPdf.c_str());
     c->SaveAs(outPng.c_str());
 }
@@ -157,16 +167,22 @@ void plot_pval_yuu() {
 
     d1 = int(config["discriminator_1"].get<float>()*1000);
     d2 = int(config["discriminator_2"].get<float>()*1000);
+    d3 = int(config["discriminator_3"].get<float>()*1000);
     process1 = config["process_1"].get<std::string>();
     path1 = paths[process1].get<std::string>();
     std::string input1 = path1 + Form("/roofit_results/out_D%d/p_values.csv", d1);
     process2 = config["process_2"].get<std::string>();
     path2 = paths[process2].get<std::string>();
     std::string input2 = path2 + Form("/roofit_results/out_D%d/p_values.csv", d2);
+    process3 = config["process_3"].get<std::string>();
+    path3 = paths[process3].get<std::string>();
+    std::string input3 = path3 + Form("/roofit_results/out_D%d/p_values.csv", d3);
+    
 
     try{
-        chi1_5 = read_CSV(input2.c_str());
-        chi2 = read_CSV(input1.c_str());
+        yuu02 = read_CSV(input1.c_str());
+        yuu04 = read_CSV(input2.c_str());
+        yuu04_pdf = read_CSV(input3.c_str());
         generate_plot();
     }
     catch(const std::exception& exc) {

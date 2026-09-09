@@ -183,13 +183,15 @@ std::vector<SignalUncertainties> read_uncrt(std::string inputFile) {
         if(getline(str, cell, ',')) point.qq2gg_scale_uncrt_hi = stod(cell);
         // Scale uncertainty (low)
         if(getline(str, cell, ',')) point.qq2gg_scale_uncrt_lo = stod(cell);
-        // JER uncertainty
-        if(getline(str, cell, ',')) point.JER_uncrt = stod(cell);
-        // JES uncertainty
-        if(getline(str, cell, ',')) point.JES_uncrt = stod(cell);
+        // JES_JER uncertainty
+        if(getline(str, cell, ',')) point.JES_JER_uncrt = stod(cell);
+        // cone uncertainty
+        if(getline(str, cell, ',')) point.cone_uncrt = stod(cell);
         // Luminosity uncertainty
         if(getline(str, cell, ',')) point.lumi_uncrt = stod(cell);
-            
+        // Pileup uncertainty
+        if(getline(str, cell, ',')) point.pileup_uncrt = stod(cell);
+
         data.push_back(point);
     }
 
@@ -255,21 +257,29 @@ PseudoExperimentResult runPseudoExp(PseudoExperimentInput input) {
     glob_lumi.setConstant();
     RooLognormal constraint_lumi("constraint_lumi", "constraint_lumi", glob_lumi, theta_lumi, sigmaLumi);
 
-    // JER uncertainty, both for signal and background
-    RooRealVar sigmaJER("sigmaJER", "std dev of JER uncertainty", 1.0 + uncrt.JER_uncrt/100, 1.0001, 100.);
-    sigmaJER.setConstant();
-    RooRealVar theta_JER("theta_JER", "JER uncertainty", 1., 1E-6, 5.);
-    RooRealVar glob_JER("glob_JER", "global observable for JER uncertainty", 1., 1E-6, 5.);
-    glob_JER.setConstant();
-    RooLognormal constraint_JER("constraint_JER", "constraint_JER", glob_JER, theta_JER, sigmaJER);
+    // JES_JER uncertainty, both for signal and background
+    RooRealVar sigmaJES_JER("sigmaJES_JER", "std dev of JES_JER uncertainty", 1.0 + uncrt.JES_JER_uncrt/100, 1.0001, 100.);
+    sigmaJES_JER.setConstant();
+    RooRealVar theta_JES_JER("theta_JES_JER", "JES_JER uncertainty", 1., 1E-6, 5.);
+    RooRealVar glob_JES_JER("glob_JES_JER", "global observable for JES_JER uncertainty", 1., 1E-6, 5.);
+    glob_JES_JER.setConstant();
+    RooLognormal constraint_JES_JER("constraint_JES_JER", "constraint_JES_JER", glob_JES_JER, theta_JES_JER, sigmaJES_JER);
 
-    // JES uncertainty, both for signal and background
-    RooRealVar sigmaJES("sigmaJES", "std dev of JES uncertainty", 1.0 + uncrt.JES_uncrt/100, 1.0001, 100.);
-    sigmaJES.setConstant();
-    RooRealVar theta_JES("theta_JES", "JES uncertainty", 1., 1E-6, 5.);
-    RooRealVar glob_JES("glob_JES", "global observable for JES uncertainty", 1., 1E-6, 5.);
-    glob_JES.setConstant();
-    RooLognormal constraint_JES("constraint_JES", "constraint_JES", glob_JES, theta_JES, sigmaJES);
+    // Cone uncertainty, both for signal and background
+    RooRealVar sigmaCone("sigmaCone", "std dev of cone uncertainty", 1.0 + uncrt.cone_uncrt/100, 1.0001, 100.);
+    sigmaCone.setConstant();
+    RooRealVar theta_Cone("theta_Cone", "Cone uncertainty", 1., 1E-6, 5.);
+    RooRealVar glob_Cone("glob_Cone", "global observable for Cone uncertainty", 1., 1E-6, 5.);
+    glob_Cone.setConstant();
+    RooLognormal constraint_Cone("constraint_Cone", "constraint_Cone", glob_Cone, theta_Cone, sigmaCone);
+
+    // Pileup uncertainty, both for signal and background
+    RooRealVar sigmaPileup("sigmaPileup", "std dev of pileup uncertainty", 1.0 + uncrt.pileup_uncrt/100, 1.0001, 100.);
+    sigmaPileup.setConstant();
+    RooRealVar theta_Pileup("theta_Pileup", "Pileup uncertainty", 1., 1E-6, 5.);
+    RooRealVar glob_Pileup("glob_Pileup", "global observable for Pileup uncertainty", 1., 1E-6, 5.);
+    glob_Pileup.setConstant();
+    RooLognormal constraint_Pileup("constraint_Pileup", "constraint_Pileup", glob_Pileup, theta_Pileup, sigmaPileup);
 
     // PDF uncertainty for signal 
     RooRealVar sigmaPDF_sig("sigmaPDF_sig", "std dev of PDF uncertainty for signal", 1.0 + uncrt.sig_PDF_uncrt/100, 1.0001, 100.);
@@ -297,7 +307,7 @@ PseudoExperimentResult runPseudoExp(PseudoExperimentInput input) {
     RooRealVar mu("mu", "signal multiplier", 1.0, 0.0, 20.0);
     mu.setConstant(true); // for the moment
     // define "full" signal yield
-    RooFormulaVar total_signal("total_signal", "@0*@1*@2*@3*@4*@5*@6", RooArgList(mu, S0_true, theta_lumi, theta_JER, theta_JES, theta_PDF_sig, theta_scale_sig));
+    RooFormulaVar total_signal("total_signal", "@0*@1*@2*@3*@4*@5*@6*@7", RooArgList(mu, S0_true, theta_lumi, theta_JES_JER, theta_Cone, theta_Pileup, theta_PDF_sig, theta_scale_sig));
 
 
 
@@ -332,7 +342,7 @@ PseudoExperimentResult runPseudoExp(PseudoExperimentInput input) {
     mean_scale_bkg_jjh.setConstant();
     RooBifurGauss constraint_scale_bkg_jjh("constraint_scale_bkg_jjh", "constraint_scale_bkg_jjh", theta_scale_bkg_jjh, mean_scale_bkg_jjh, sigma_scale_bkg_jjh_lo, sigma_scale_bkg_jjh_hi);
 
-    RooFormulaVar total_bkg_jjh("total_bkg_jjh", "@0*@1*@2*@3*@4*@5", RooArgList(bkg_jjh_true, theta_lumi, theta_JER, theta_JES, theta_PDF_bkg_jjh, theta_scale_bkg_jjh));
+    RooFormulaVar total_bkg_jjh("total_bkg_jjh", "@0*@1*@2*@3*@4*@5*@6", RooArgList(bkg_jjh_true, theta_lumi, theta_JES_JER, theta_Cone, theta_Pileup, theta_PDF_bkg_jjh, theta_scale_bkg_jjh));
 
 
 
@@ -367,7 +377,7 @@ PseudoExperimentResult runPseudoExp(PseudoExperimentInput input) {
     mean_scale_bkg_wj.setConstant();
     RooBifurGauss constraint_scale_bkg_wj("constraint_scale_bkg_wj", "constraint_scale_bkg_wj", theta_scale_bkg_wj, mean_scale_bkg_wj, sigma_scale_bkg_wj_lo, sigma_scale_bkg_wj_hi);
 
-    RooFormulaVar total_bkg_wj("total_bkg_wj", "@0*@1*@2*@3*@4*@5", RooArgList(bkg_wj_true, theta_lumi, theta_JER, theta_JES, theta_PDF_bkg_wj, theta_scale_bkg_wj));
+    RooFormulaVar total_bkg_wj("total_bkg_wj", "@0*@1*@2*@3*@4*@5*@6", RooArgList(bkg_wj_true, theta_lumi, theta_JES_JER, theta_Cone, theta_Pileup, theta_PDF_bkg_wj, theta_scale_bkg_wj));
 
 
 
@@ -402,7 +412,7 @@ PseudoExperimentResult runPseudoExp(PseudoExperimentInput input) {
     mean_scale_bkg_qq2gg.setConstant();
     RooBifurGauss constraint_scale_bkg_qq2gg("constraint_scale_bkg_qq2gg", "constraint_scale_bkg_qq2gg", theta_scale_bkg_qq2gg, mean_scale_bkg_qq2gg, sigma_scale_bkg_qq2gg_lo, sigma_scale_bkg_qq2gg_hi);
 
-    RooFormulaVar total_bkg_qq2gg("total_bkg_qq2gg", "@0*@1*@2*@3*@4*@5", RooArgList(bkg_qq2gg_true, theta_lumi, theta_JER, theta_JES, theta_PDF_bkg_qq2gg, theta_scale_bkg_qq2gg));
+    RooFormulaVar total_bkg_qq2gg("total_bkg_qq2gg", "@0*@1*@2*@3*@4*@5*@6", RooArgList(bkg_qq2gg_true, theta_lumi, theta_JES_JER, theta_Cone, theta_Pileup, theta_PDF_bkg_qq2gg, theta_scale_bkg_qq2gg));
 
 
 
@@ -418,11 +428,17 @@ PseudoExperimentResult runPseudoExp(PseudoExperimentInput input) {
     // define full pdfs (i.e. extended x constraint terms)
     RooAddPdf sb_tmp("sb_tmp", "sb_tmp", RooArgList(ext_sig, ext_bkg));
     RooProdPdf sb_full("sb_full", "sb_full", RooArgSet(sb_tmp, constraint_ML_sig, constraint_ML_bkg_jjh, constraint_ML_bkg_wj, constraint_ML_bkg_qq2gg, 
-                                                        constraint_lumi, constraint_JER, constraint_JES, 
+                                                        constraint_lumi, constraint_JES_JER, constraint_Cone, constraint_Pileup,
                                                         constraint_PDF_sig, constraint_scale_sig, 
                                                         constraint_PDF_bkg_jjh, constraint_scale_bkg_jjh,
                                                         constraint_PDF_bkg_wj, constraint_scale_bkg_wj,
                                                         constraint_PDF_bkg_qq2gg, constraint_scale_bkg_qq2gg));
+
+    // RooProdPdf sb_full("sb_full", "sb_full", RooArgSet(sb_tmp, constraint_lumi, constraint_JES_JER, constraint_Cone, constraint_Pileup,
+    //                                                     constraint_PDF_sig, constraint_scale_sig, 
+    //                                                     constraint_PDF_bkg_jjh, constraint_scale_bkg_jjh,
+    //                                                     constraint_PDF_bkg_wj, constraint_scale_bkg_wj,
+    //                                                     constraint_PDF_bkg_qq2gg, constraint_scale_bkg_qq2gg));
 
 
 
@@ -432,7 +448,7 @@ PseudoExperimentResult runPseudoExp(PseudoExperimentInput input) {
     RooArgSet sb_params;
     sb_params.add(mu);
     sb_params.add(S0_true); sb_params.add(bkg_jjh_true); sb_params.add(bkg_wj_true); sb_params.add(bkg_qq2gg_true);
-    sb_params.add(theta_lumi); sb_params.add(theta_JER); sb_params.add(theta_JES);
+    sb_params.add(theta_lumi); sb_params.add(theta_JES_JER); sb_params.add(theta_Cone); sb_params.add(theta_Pileup);
     sb_params.add(theta_PDF_sig); sb_params.add(theta_scale_sig);
     sb_params.add(theta_PDF_bkg_jjh); sb_params.add(theta_scale_bkg_jjh);
     sb_params.add(theta_PDF_bkg_wj); sb_params.add(theta_scale_bkg_wj);
@@ -444,7 +460,7 @@ PseudoExperimentResult runPseudoExp(PseudoExperimentInput input) {
     // the respective PSEUDOEXPERIMENT/TOY.
     RooArgSet globals;
     globals.add(S0_obs); globals.add(bkg_jjh_obs); globals.add(bkg_wj_obs); globals.add(bkg_qq2gg_obs);
-    globals.add(glob_lumi); globals.add(glob_JER); globals.add(glob_JES);
+    globals.add(glob_lumi); globals.add(glob_JES_JER); globals.add(glob_Cone); globals.add(glob_Pileup);
     globals.add(glob_PDF_sig); globals.add(mean_scale_sig);
     globals.add(glob_PDF_bkg_jjh); globals.add(mean_scale_bkg_jjh);
     globals.add(glob_PDF_bkg_wj); globals.add(mean_scale_bkg_wj);

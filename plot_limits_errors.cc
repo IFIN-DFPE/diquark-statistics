@@ -33,10 +33,10 @@ struct DataPoint {
     std::vector<double> bkg, sigma_bkg;
 };
 
-ul_point pointLimit1, pointLimit2, pointLimit3;
-DataPoint pointYield1, pointYield2, pointYield3;
-std::string path1, process1, path2, process2, path3, process3;
-int d1, d2, d3;
+ul_point pointLimit1;
+DataPoint pointYield1;
+std::string path1, process1;
+int d1;
 
 DataPoint read_yields(std::string inputFile) {
     // Check if user has entered the path to the data file
@@ -143,19 +143,17 @@ void generate_plot() {
 
     // Normal
     TGraph* gLim1 = new TGraph(pointLimit1.masses.size(), &pointLimit1.masses[0], &pointLimit1.med[0]);
-    TGraph* gLim2 = new TGraph(pointLimit2.masses.size()-1, &pointLimit2.masses[0], &pointLimit2.med[0]);
-    TGraph* gLim3 = new TGraph(pointLimit3.masses.size(), &pointLimit3.masses[0], &pointLimit3.med[0]);
     TGraph* gYld1 = new TGraph(pointLimit1.masses.size(), &pointYield1.m_s[0], &pointYield1.sig[0]);
-    TGraph* gYld2 = new TGraph(pointLimit2.masses.size()-1, &pointYield2.m_s[0], &pointYield2.sig[0]);
-    TGraph* gYld3 = new TGraph(pointYield3.m_s.size(), &pointYield3.m_s[0], &pointYield3.sig[0]);
+    TGraphAsymmErrors* gSig1 = new TGraphAsymmErrors(pointLimit1.masses.size());
+    TGraphAsymmErrors* gSig2 = new TGraphAsymmErrors(pointLimit1.masses.size());    
+    for(int i = 0; i < pointLimit1.masses.size(); i++) {        
+        gSig1->SetPoint(i, pointLimit1.masses[i], pointLimit1.med[i]);
+        gSig1->SetPointError(i, 0., 0., pointLimit1.med[i]-pointLimit1.sig1_lo[i], pointLimit1.sig1_hi[i]-pointLimit1.med[i]);
 
-    // Discriminator limits
-    // TGraph* gLim1 = new TGraph(5, &pointLimit1.masses[2], &pointLimit1.med[2]);
-    // TGraph* gLim2 = new TGraph(5, &pointLimit2.masses[2], &pointLimit2.med[2]);
-    // TGraph* gLim3 = new TGraph(5, &pointLimit3.masses[2], &pointLimit3.med[2]);
-    // TGraph* gYld1 = new TGraph(5, &pointYield1.m_s[2], &pointYield1.sig[2]);
-    // TGraph* gYld2 = new TGraph(5, &pointYield2.m_s[2], &pointYield2.sig[2]);
-    // TGraph* gYld3 = new TGraph(5, &pointYield3.m_s[2], &pointYield3.sig[2]);
+        gSig2->SetPoint(i, pointLimit1.masses[i], pointLimit1.med[i]);
+        gSig2->SetPointError(i, 0., 0., pointLimit1.med[i]-pointLimit1.sig2_lo[i], pointLimit1.sig2_hi[i]-pointLimit1.med[i]);
+    
+    }
 
 
     gYld1->SetTitle(";M_{S} [TeV];Event counts");
@@ -164,8 +162,9 @@ void generate_plot() {
     gYld1->SetMarkerStyle(22);
     gYld1->SetMarkerSize(1.5);
     gYld1->SetLineWidth(2);
-    gYld1->SetLineColor(kBlue+1);
-    gYld1->SetMarkerColor(kBlue+1);
+    gYld1->SetLineStyle(9);
+    gYld1->SetLineColor(kRed-4);
+    gYld1->SetMarkerColor(kRed-4);
 
     gLim1->SetMarkerStyle(22);
     gLim1->SetMarkerSize(1.5);
@@ -174,71 +173,19 @@ void generate_plot() {
     gLim1->SetLineColor(kBlue+1);
     gLim1->SetMarkerColor(kBlue+1);
 
-    gYld2->SetMarkerStyle(20);
-    gYld2->SetMarkerSize(1.5);
-    gYld2->SetLineWidth(2);
-    gYld2->SetLineColor(kBlack);
-    gYld2->SetMarkerColor(kBlack);
-
-    gLim2->SetMarkerStyle(20);
-    gLim2->SetMarkerSize(1.5);
-    gLim2->SetLineWidth(2);
-    gLim2->SetLineStyle(7);
-    gLim2->SetLineColor(kBlack);
-    gLim2->SetMarkerColor(kBlack);
-
-    gYld3->SetMarkerStyle(21);
-    gYld3->SetMarkerSize(1.5);
-    gYld3->SetLineWidth(2);
-    gYld3->SetLineColor(kRed+1);
-    gYld3->SetMarkerColor(kRed+1);
-
-    gLim3->SetMarkerStyle(21);
-    gLim3->SetMarkerSize(1.5);
-    gLim3->SetLineWidth(2);
-    gLim3->SetLineStyle(7);
-    gLim3->SetLineColor(kRed+1);
-    gLim3->SetMarkerColor(kRed+1);
-    
-
+    gSig1->SetFillColor(38);
+    gSig2->SetTitle(";M_{S} [TeV];CL_{s}");
+    gSig2->GetXaxis()->SetTitleOffset(1.2);
+    gSig2->SetFillColor(kOrange-4);
 
     gYld1->GetYaxis()->SetRangeUser(3e-1, 1e2); // Normal
     // gYld1->GetYaxis()->SetRangeUser(1, 20); // Discriminator limits
     // gYld1->GetXaxis()->SetRangeUser(7.35, 8.65); // Discriminator limits
 
-    // TLine *line1 = new TLine(8.305, 5e-1, 8.305, 3e2); // ChiChi, y_uu = 0.2, mChi = 2.0 TeV
-    // TLine *line1 = new TLine(8.305, 5e-1, 8.305, 3e2); // ChiChi, y_uu = 0.2, mChi = 1.5 TeV
-    // TLine *line1 = new TLine(8.175, 5e-1, 8.175, 3e2); // uChi, y_uu = 0.2, mChi = 1.5 TeV
-    // TLine *line1 = new TLine(8.2, 5e-1, 8.2, 3e2); // uChi, y_uu = 0.2, mChi = 2.0 TeV
-    TLine *line1 = new TLine(7.55, 3e-1, 7.55, 1e2); // uChi, ubbbart, mChi = 2.0 TeV
-    line1->SetLineStyle(9);
-    line1->SetLineColor(kRed-4);
-    line1->SetLineWidth(2);
-
-    // TLine *line2 = new TLine(8.95, 5e-1, 8.95, 3e2); // ChiChi, y_uu = 0.4, mChi = 2.0 TeV
-    // TLine *line2 = new TLine(8.95, 5e-1, 8.95, 3e2); // ChiChi, y_uu = 0.4, mChi = 1.5 TeV
-    // TLine *line2 = new TLine(8.25, 5e-1, 8.25, 3e2); // uChi, y_uu = 0.4, mChi = 1.5 TeV
-    // TLine *line2 = new TLine(8.275, 5e-1, 8.275, 3e2); // uChi, y_uu = 0.4, mChi = 2.0 TeV
-    // TLine *line2 = new TLine(8.94, 5e-1, 8.94, 3e2); // uChi, y_uChi = 0.5, mChi = 2.0 TeV
-    TLine *line2 = new TLine(8.01, 3e-1, 8.01, 1e2); // uChi, uZt, mChi = 2.0 TeV
-    line2->SetLineStyle(10);
-    line2->SetLineColor(kRed-4);
-    line2->SetLineWidth(2);
-
-    TLine *line3 = new TLine(9.282, 1e0, 9.282, 4.5e0);
-    // TLine *line2 = new TLine(9.26, 5e-1, 9.26, 3e2);
-    line3->SetLineStyle(8);
-    line3->SetLineColor(kRed-4);
-    line3->SetLineWidth(2);
-
 
     TLegend* legend = new TLegend(0.7, 0.6, 0.9, 0.9);
     legend->AddEntry(gLim1, "#mu^{95}#times S_{ev}, u(h^{0}t)", "pl");
-    legend->AddEntry(gYld1, "S_{ev}, u(h^{0}t)", "pl");    
-    legend->AddEntry(gLim2, "#mu^{95}#times S_{ev}, u(Zt)", "pl");
-    legend->AddEntry(gYld2, "S_{ev}, u(Zt)", "pl");
-    // legend->AddEntry(gLim3, "#mu^{95}#times S_{ev}, D = 0.925", "pl");
-    // legend->AddEntry(gYld3, "S_{ev}, D = 0.925", "pl");    
+    legend->AddEntry(gYld1, "S_{ev}, u(h^{0}t)", "pl");       
     legend->AddEntry((TObject*)0, "m_{#chi} = 2.0 TeV", "");
     // legend->AddEntry((TObject*)0, "y_{uu} = 0.2", "");
 
@@ -247,29 +194,25 @@ void generate_plot() {
     // legend->SetFillColor(0);
     // legend->SetBorderSize(0);
 
-    gYld1->Draw("APL");
-    gLim1->Draw("PL SAME");
-    gYld2->Draw("PL SAME");
-    gLim2->Draw("PL SAME");
-    // gYld3->Draw("PL SAME");
-    // gLim3->Draw("PL SAME");
-    line1->Draw("SAME");
-    line2->Draw("SAME");
-    // line3->Draw("SAME");
+    gSig2->GetYaxis()->SetRangeUser(1e0, 5e1);
+    gSig2->Draw("A3");
+    gSig1->Draw("3 SAME");
+    gYld1->Draw("C SAME");
+    gLim1->Draw("L SAME");
     legend->Draw("SAME");
     
 
     c->Update();
     c->Draw();
 
-    std::string outPdf = path1 + "/graphs/" + process1 + "_upper_limit_yields.pdf";
-    std::string outPng = path1 + "/graphs/" + process1 + "_upper_limit_yields.png";
+    std::string outPdf = path1 + "/graphs/" + process1 + "_upper_limit_errors.pdf";
+    std::string outPng = path1 + "/graphs/" + process1 + "_upper_limit_errors.png";
     c->SaveAs(outPdf.c_str());
     c->SaveAs(outPng.c_str());
 
 }
 
-void plot_ul_yields() {
+void plot_limits_errors() {
 
     gROOT->SetBatch(1);
 
@@ -282,28 +225,14 @@ void plot_ul_yields() {
     nlohmann::json config = nlohmann::json::parse(configFile);
 
     auto d1 = int(config["discriminator_1"].get<float>()*1000);
-    auto d2 = int(config["discriminator_2"].get<float>()*1000);
-    auto d3 = int(config["discriminator_3"].get<float>()*1000);
     process1 = config["process_1"].get<std::string>();
-    process2 = config["process_2"].get<std::string>();
-    process3 = config["process_3"].get<std::string>();
     path1 = paths[process1].get<std::string>();
-    path2 = paths[process2].get<std::string>();
-    path3 = paths[process3].get<std::string>();
     std::string inputLim1 = path1 + Form("/roostats_results/out_D%d/upper_limits.csv", d1);
-    std::string inputLim2 = path2 + Form("/roostats_results/out_D%d/upper_limits.csv", d2);
-    std::string inputLim3 = path3 + Form("/roostats_results/out_D%d/upper_limits.csv", d3);
     std::string inputYld1 = path1 + Form("/signal_yields/sig_bkg_D%d.csv", d1);
-    std::string inputYld2 = path2 + Form("/signal_yields/sig_bkg_D%d.csv", d2);
-    std::string inputYld3 = path3 + Form("/signal_yields/sig_bkg_D%d.csv", d3);
 
     try{
         pointLimit1 = read_CSV(inputLim1);
-        pointLimit2 = read_CSV(inputLim2);
-        pointLimit3 = read_CSV(inputLim3);
         pointYield1 = read_yields(inputYld1);
-        pointYield2 = read_yields(inputYld2);
-        pointYield3 = read_yields(inputYld3);
 
         generate_plot();
     

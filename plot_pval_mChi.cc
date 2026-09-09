@@ -80,7 +80,7 @@ void generate_plot() {
     c->SetLogy();
 
     TGraph* gP_val_chi15 = new TGraph(chi1_5.masses.size(), &chi1_5.masses[0], &chi1_5.p_vals[0]);
-    TGraph* gP_val_chi2 = new TGraph(chi2.masses.size(), &chi2.masses[0], &chi2.p_vals[0]);
+    TGraph* gP_val_chi2 = new TGraph(chi1_5.masses.size(), &chi2.masses[0], &chi2.p_vals[0]);
 
     gP_val_chi15->SetTitle(";M_{S} [TeV];Local p-value");
     gP_val_chi15->GetXaxis()->SetTitleOffset(1.2);
@@ -97,7 +97,7 @@ void generate_plot() {
     gP_val_chi15->SetMarkerColor(kBlack);
 
     gP_val_chi15->GetXaxis()->SetRangeUser(6.8, 8.95);
-    gP_val_chi15->GetYaxis()->SetRangeUser(1e-8, 1.);
+    gP_val_chi15->GetYaxis()->SetRangeUser(1e-3, 1.);
 
     gP_val_chi15->Draw("APL");
     gP_val_chi2->Draw("PL SAME");
@@ -105,7 +105,7 @@ void generate_plot() {
 
     double x_min = gP_val_chi15->GetXaxis()->GetXmin();
     double x_max = gP_val_chi15->GetXaxis()->GetXmax();
-    for (int sigma = 1; sigma <= 5; ++sigma) {
+    for (int sigma = 1; sigma <= 3; ++sigma) {
         double z = sigma;
         double pval = 0.5 * TMath::Erfc(z / TMath::Sqrt2());
 
@@ -123,10 +123,13 @@ void generate_plot() {
         label->Draw("SAME");
     }
 
-    TLegend* legend = new TLegend(0.65, 0.25, 0.85, 0.43);
+    TLegend* legend = new TLegend(0.65, 0.2, 0.85, 0.4);
     legend->AddEntry(gP_val_chi15, "m_{#chi} = 1.5 TeV", "pl");
-    legend->AddEntry(gP_val_chi2, "m_{#chi} = 2 TeV", "pl");
-    legend->AddEntry((TObject*)0, "D = 0.9", "");
+    // legend->AddEntry(gP_val_chi15, "S_{uu}#rightarrow u#chi#rightarrow u(h^{0}t)", "pl");
+    legend->AddEntry(gP_val_chi2, "m_{#chi} = 2.0 TeV", "pl");
+    // legend->AddEntry(gP_val_chi2, "S_{uu}#rightarrow u#chi#rightarrow u(Zt)", "pl");
+    // legend->AddEntry((TObject*)0, "D = 0.9", "");
+    legend->AddEntry((TObject*)0, "y_{uu} = 0.2", "");
     legend->SetTextSize(0.04);
     legend->SetFillStyle(0);
     legend->SetFillColor(0);
@@ -166,8 +169,8 @@ void plot_pval_mChi() {
     std::string input2 = path2 + Form("/roofit_results/out_D%d/p_values.csv", d2);
 
     try{
-        chi1_5 = read_CSV(input2.c_str());
         chi2 = read_CSV(input1.c_str());
+        chi1_5 = read_CSV(input2.c_str());
         generate_plot();
     }
     catch(const std::exception& exc) {
