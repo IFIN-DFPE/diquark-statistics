@@ -1,11 +1,14 @@
+import os
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
+os.environ["XLA_FLAGS"] = "--xla_cpu_multi_thread_eigen=false intra_op_parallelism_threads=1"
 import stats_models as mod
 import pandas as pd
-import matplotlib.pyplot as plt
-import mplhep as hep
 import argparse
-from pathlib import Path
-import sys
-from datetime import datetime
+
 
 
 def main():

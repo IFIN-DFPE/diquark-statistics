@@ -4,26 +4,27 @@ set -euo pipefail
 MASTER_LOG="master_run.txt"
 : > "$MASTER_LOG"
 
-# keep a master log in the main directory
+# master log in the main directory
 exec > >(tee -a "$MASTER_LOG") 2>&1
 
 echo "=========================================================="
 echo "Starting master run at $(date)"
 echo "=========================================================="
 
-# list the configs you want to run
-# use your actual config filenames here
+# list of the configs to run
 CONFIGS=(
     # "configs/ChiChi/cls_as_yuu02_mChi20_D900.json"
     # "configs/ChiChi/cls_tb_yuu02_mChi20_D900.json"    
     
-    "configs/ChiChi/ul_as_yuu04_mChi20_D900.json"
+    # "configs/ChiChi/ul_as_yuu04_mChi20_D900.json"
     # "configs/ChiChi/ul_tb_yuu04_mChi20_D900.json"
-    "configs/ChiChi/ul_as_yuu02_mChi20_D900.json"
+    # "configs/ChiChi/ul_as_yuu02_mChi20_D900.json"
     # "configs/ChiChi/ul_tb_yuu02_mChi20_D900.json"
 
-    # "configs/ChiChi/pval_as_yuu02_mChi20_D900.json"
-    # "configs/ChiChi/pval_tb_yuu02_mChi20_D900.json"
+    "configs/ChiChi/pval_as_yuu02_mChi20_D900.json"
+    "configs/ChiChi/pval_tb_yuu02_mChi20_D900.json"
+    # "configs/ChiChi/pval_tb_yuu04_mChi20_D900.json"
+    # "configs/ChiChi/pval_as_yuu04_mChi20_D900.json"
 )
 
 for cfg in "${CONFIGS[@]}"; do
@@ -38,7 +39,7 @@ for cfg in "${CONFIGS[@]}"; do
 
     mkdir -p "$RESULT_DIR"
 
-    # log file stored next to the results, using only the config filename
+    # log file path
     CFG_NAME=$(basename "$cfg")
     LOG_FILE="${RESULT_DIR}/${CFG_NAME%.json}.log"
 

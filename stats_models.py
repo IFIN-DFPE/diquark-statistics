@@ -7,6 +7,7 @@ import warnings
 import json
 from dataclasses import dataclass
 from pathlib import Path
+from concurrent.futures import ProcessPoolExecutor
 warnings.filterwarnings("ignore", message="Values in x were outside bounds during a minimize step")
 
 

@@ -1,7 +1,0 @@
-{
-    "process": "ChiChi_yuu02_mChi20_vBest",
-    "discriminator": 0.9,
-    "runType": "limits",
-    "calcType": "asymptotic",
-    "nToys": 1000    
-}
