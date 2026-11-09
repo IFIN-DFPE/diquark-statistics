@@ -2,10 +2,13 @@
 set -euo pipefail
 
 MASTER_LOG="master_run.txt"
+CURRENT_CFG=""
 : > "$MASTER_LOG"
 
 # master log in the main directory
 exec > >(tee -a "$MASTER_LOG") 2>&1
+
+trap 'status=$?; echo "ERROR: run_pyhf.sh failed at line $LINENO with exit code $status while processing ${CURRENT_CFG:-<none>}" >&2' ERR
 
 echo "=========================================================="
 echo "Starting master run at $(date)"
@@ -13,13 +16,13 @@ echo "=========================================================="
 
 # list of the configs to run
 CONFIGS=(
-    # "configs/ChiChi/cls_as_yuu02_mChi20_D900.json"
-    # "configs/ChiChi/cls_tb_yuu02_mChi20_D900.json"    
+    "configs/ChiChi/cls_as_yuu02_mChi20_D900.json"
+    "configs/ChiChi/cls_tb_yuu02_mChi20_D900.json"    
     
     # "configs/ChiChi/ul_as_yuu04_mChi20_D900.json"
     # "configs/ChiChi/ul_tb_yuu04_mChi20_D900.json"
-    # "configs/ChiChi/ul_as_yuu02_mChi20_D900.json"
-    # "configs/ChiChi/ul_tb_yuu02_mChi20_D900.json"
+    "configs/ChiChi/ul_as_yuu02_mChi20_D900.json"
+    "configs/ChiChi/ul_tb_yuu02_mChi20_D900.json"
 
     "configs/ChiChi/pval_as_yuu02_mChi20_D900.json"
     "configs/ChiChi/pval_tb_yuu02_mChi20_D900.json"
@@ -28,6 +31,8 @@ CONFIGS=(
 )
 
 for cfg in "${CONFIGS[@]}"; do
+    CURRENT_CFG="$cfg"
+
     if [ ! -f "$cfg" ]; then
         echo "Skipping missing config: $cfg"
         continue

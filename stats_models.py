@@ -7,7 +7,8 @@ import warnings
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from concurrent.futures import ProcessPoolExecutor
+import concurrent.futures
+import multiprocessing
 warnings.filterwarnings("ignore", message="Values in x were outside bounds during a minimize step")
 
 
@@ -154,7 +155,7 @@ def build_pyhf_model(yields, uncrt, obs_yield):
 
 
 
-def run_cls_asymptotics(df_yields, df_uncrt, output_path):
+def _run_cls_asymptotics_single(args):
     """
         Function that runs asymptotic CLs scan.
 
@@ -162,66 +163,76 @@ def run_cls_asymptotics(df_yields, df_uncrt, output_path):
             - Observed CLs
             - Expected CLs band array (-2s, -1s, median, +1s, +2s)
     """
+    yields, uncrt = args
+
+    expected_bkg_total = expected_bkg_total = sum([yields['BKG_JJH'], yields['BKG_WJ'], yields['BKG_QQ2GG']])
+
+    model_dict = build_pyhf_model(yields, uncrt, expected_bkg_total)
+    workspace = pyhf.Workspace(model_dict)
+    model = workspace.model()
+
+    obs_data = workspace.data(model)
+    
+    print(f"\n===============================================================")
+    print(f"Running asymptotic CLs computation for:")
+    print(f"M_S: {yields['M_S']} TeV")
+
+    CLs_obs, CLs_bands = pyhf.infer.hypotest(
+        poi_test = 1.0,
+        data = obs_data,
+        pdf = model,
+        test_stat = 'qtilde',
+        calctype = 'asymptotics',
+        return_expected_set = True
+    )
+
+    print(f"Done.")
+    print(f"===============================================================")
+
+    CLs_obs = float(CLs_obs)
+    CLs_bands = np.asarray(CLs_bands).tolist()
+
+    return {
+        "M_S": yields['M_S'],
+        "obs": CLs_obs,
+        "exp-2s": CLs_bands[0],
+        "exp-1s": CLs_bands[1],
+        "exp_med": CLs_bands[2],
+        "exp+1s": CLs_bands[3],
+        "exp+2s": CLs_bands[4]
+    }
+
+
+
+def run_cls_asymptotics(df_yields, df_uncrt, output_path):
+    """
+        Runs the analysis across all mass points
+    """
     rows = []
-    results = []
 
+    tasks = []
     for i in range(len(df_yields)):
-        yields = df_yields.iloc[i].to_dict()
-        uncrt = df_uncrt.iloc[i].to_dict()
-
-        expected_bkg_total = sum([yields['BKG_JJH'], yields['BKG_WJ'], yields['BKG_QQ2GG']])
-
-        model_dict = build_pyhf_model(yields, uncrt, expected_bkg_total)
-        workspace = pyhf.Workspace(model_dict)
-        model = workspace.model()
-
-        obs_data = workspace.data(model)
-        
-        print(f"\n===============================================================")
-        print(f"Running asymptotic CLs computation for:")
-        print(f"M_S: {yields['M_S']} TeV")
-
-        CLs_obs, CLs_bands = pyhf.infer.hypotest(
-            poi_test = 1.0,
-            data = obs_data,
-            pdf = model,
-            test_stat = 'qtilde',
-            calctype = 'asymptotics',
-            return_expected_set = True
-        )
-
-        print(f"Observed CLs (Median)         : {CLs_obs}")
-        print(f"Expected -1 Sigma             : {CLs_bands[1]}")
-        print(f"Expected CLs (Median)         : {CLs_bands[2]}")
-        print(f"Expected +1 Sigma             : {CLs_bands[3]}")
-
-        print(f"Done.")
-        print(f"===============================================================")
-
-        rows.append({
-            "M_S": yields["M_S"],
-            "obs": CLs_obs,
-            "exp-2s": CLs_bands[0],
-            "exp-1": CLs_bands[1],
-            "exp_med": CLs_bands[2],
-            "exp+1s": CLs_bands[3],
-            "exp+2s": CLs_bands[4],
-        })
-
-        results.append(CLsResult(
-            observed = float(np.asarray(CLs_obs).reshape(-1)[0]),
-            expected = np.asarray(CLs_bands)
+        tasks.append((
+            df_yields.iloc[i].to_dict(),
+            df_uncrt.iloc[i].to_dict()
         ))
 
+    with concurrent.futures.ProcessPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
+        for result_dict in executor.map(_run_cls_asymptotics_single, tasks):
+            rows.append(result_dict)
+
+    rows = sorted(rows, key=lambda x: x['M_S'])
+    
     out = Path(output_path+"cls_asymptotic_results.csv")
     out.parent.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame(rows).to_csv(out, index=False)
+    results = pd.DataFrame(rows)
+    results.to_csv(out, index=False)
 
     return results
 
 
 
-def run_cls_toybased(df_yields, df_uncrt, output_path, toys):
+def _run_cls_toybased_single(args):
     """
         Function that runs toy-based CLs scan.
 
@@ -229,63 +240,78 @@ def run_cls_toybased(df_yields, df_uncrt, output_path, toys):
             - Observed CLs
             - Expected CLs band array (-2s, -1s, median, +1s, +2s)
     """
+    yields, uncrt, toys = args
+
+    expected_bkg_total = expected_bkg_total = sum([yields['BKG_JJH'], yields['BKG_WJ'], yields['BKG_QQ2GG']])
+    
+    model_dict = build_pyhf_model(yields, uncrt, expected_bkg_total)
+    workspace = pyhf.Workspace(model_dict)
+    model = workspace.model()
+
+    obs_data = workspace.data(model)
+    
+    print(f"\n===============================================================")
+    print(f"Running asymptotic CLs computation for:")
+    print(f"M_S: {yields['M_S']} TeV")
+
+    CLs_obs, CLs_bands = pyhf.infer.hypotest(
+        poi_test = 1.0,
+        data = obs_data,
+        pdf = model,
+        test_stat = 'qtilde',
+        calctype = 'toybased',
+        ntoys = toys,
+        return_expected_set = True
+    )
+
+    print(f"Done.")
+    print(f"===============================================================")
+
+    CLs_obs = float(CLs_obs)
+    CLs_bands = np.asarray(CLs_bands).tolist()
+
+    return {
+        "M_S": yields['M_S'],
+        "obs": CLs_obs,
+        "exp-2s": CLs_bands[0],
+        "exp-1s": CLs_bands[1],
+        "exp_med": CLs_bands[2],
+        "exp+1s": CLs_bands[3],
+        "exp+2s": CLs_bands[4]
+    }
+
+
+
+def run_cls_toybased(df_yields, df_uncrt, output_path, toys):
+    """
+        Runs the analysis across all mass points
+    """
     rows = []
 
+    tasks = []
     for i in range(len(df_yields)):
-        yields = df_yields.iloc[i].to_dict()
-        uncrt = df_uncrt.iloc[i].to_dict()
-        expected_bkg_total = sum([yields['BKG_JJH'], yields['BKG_WJ'], yields['BKG_QQ2GG']])
+        tasks.append((
+            df_yields.iloc[i].to_dict(),
+            df_uncrt.iloc[i].to_dict(),
+            toys
+        ))
 
-        model_dict = build_pyhf_model(yields, uncrt, expected_bkg_total)
-        workspace = pyhf.Workspace(model_dict)
-        model = workspace.model()
+    with concurrent.futures.ProcessPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
+        for result_dict in executor.map(_run_cls_toybased_single, tasks):
+            rows.append(result_dict)
 
-        obs_data = workspace.data(model)
-        
-        print(f"\n===============================================================")
-        print(f"Running toy-based CLs computation for:")
-        print(f"M_S: {yields['M_S']} TeV")
-
-        CLs_obs, CLs_bands = pyhf.infer.hypotest(
-            poi_test = 1.0,
-            data = obs_data,
-            pdf = model,
-            test_stat = 'qtilde',
-            calctype = 'toybased',
-            ntoys = toys,
-            return_expected_set = True
-        )
-
-        print(f"Observed CLs (Median)         : {CLs_obs}")
-        print(f"Expected -1 Sigma             : {CLs_bands[1]}")
-        print(f"Expected CLs (Median)         : {CLs_bands[2]}")
-        print(f"Expected +1 Sigma             : {CLs_bands[3]}")
-
-        print(f"Done.")
-        print(f"===============================================================")
-
-        rows.append({
-                "M_S": yields["M_S"],
-                "obs": CLs_obs,
-                "exp-2s": CLs_bands[0],
-                "exp-1": CLs_bands[1],
-                "exp_med": CLs_bands[2],
-                "exp+1s": CLs_bands[3],
-                "exp+2s": CLs_bands[4],
-            })
+    rows = sorted(rows, key=lambda x: x['M_S'])
 
     out = Path(output_path+"cls_toybased_results.csv")
     out.parent.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame(rows).to_csv(out, index=False)
+    results = pd.DataFrame(rows)
+    results.to_csv(out, index=False)
 
-    return CLsResult(
-        observed = float(CLs_obs),
-        expected = np.asarray(CLs_bands)
-    )
+    return results
 
 
 
-def run_limits_asymptotics(df_yields, df_uncrt, output_path):
+def _run_limits_asymptotics_single(args):
     """
         Function that runs asymptotic 95% Upper Limit scan.
 
@@ -293,62 +319,73 @@ def run_limits_asymptotics(df_yields, df_uncrt, output_path):
             - Observed Upper Limit
             - Expected Upper Limit band array (-2s, -1s, median, +1s, +2s)
     """
+    yields, uncrt = args
+
+    expected_bkg_total = sum([yields['BKG_JJH'], yields['BKG_WJ'], yields['BKG_QQ2GG']])
+
+    model_dict = build_pyhf_model(yields, uncrt, expected_bkg_total)
+    workspace = pyhf.Workspace(model_dict)
+    model = workspace.model()
+
+    obs_data = workspace.data(model)
+
+    print(f"\n===============================================================")
+    print(f"Running asymptotic Upper Limit computation for:")
+    print(f"M_S: {yields['M_S']} TeV")
+
+    obs_limit, exp_limits = pyhf.infer.intervals.upper_limits.upper_limit(
+        obs_data,
+        model,
+        scan = np.linspace(0, 10, 50),
+        test_stat = 'qtilde',
+        calctype = 'asymptotics',
+        level = 0.05,
+    )
+
+    print(f"Done.")
+    print(f"===============================================================")
+    
+    return {
+        "M_S": yields["M_S"],
+        "obs": obs_limit,
+        "exp-2s": exp_limits[0]*yields['SIG'],
+        "exp-1s": exp_limits[1]*yields['SIG'],
+        "exp_med": exp_limits[2]*yields['SIG'],
+        "exp+1s": exp_limits[3]*yields['SIG'],
+        "exp+2s": exp_limits[4]*yields['SIG']
+    }
+
+
+
+def run_limits_asymptotics(df_yields, df_uncrt, output_path):
+    """
+        Runs the analysis across all mass points
+    """
     rows = []
 
+    tasks = []
     for i in range(len(df_yields)):
-        yields = df_yields.iloc[i].to_dict()
-        uncrt = df_uncrt.iloc[i].to_dict()
-        expected_bkg_total = sum([yields['BKG_JJH'], yields['BKG_WJ'], yields['BKG_QQ2GG']])
+        tasks.append((
+            df_yields.iloc[i].to_dict(),
+            df_uncrt.iloc[i].to_dict()
+        ))
 
-        model_dict = build_pyhf_model(yields, uncrt, expected_bkg_total)
-        workspace = pyhf.Workspace(model_dict)
-        model = workspace.model()
+    with concurrent.futures.ProcessPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
+        for result_dict in executor.map(_run_limits_asymptotics_single, tasks):
+            rows.append(result_dict)
 
-        obs_data = workspace.data(model)
-
-        print(f"\n===============================================================")
-        print(f"Running asymptotic Upper Limit computation for:")
-        print(f"M_S: {yields['M_S']} TeV")
-
-        obs_limit, exp_limits = pyhf.infer.intervals.upper_limits.upper_limit(
-            obs_data,
-            model,
-            scan = np.linspace(0, 10, 50),
-            test_stat = 'qtilde',
-            calctype = 'asymptotics',
-            level = 0.05,
-        )
-
-        print(f"Observed Upper Limit (Median) : {obs_limit}")
-        print(f"Expected -1 Sigma             : {exp_limits[1]*yields['SIG']}")
-        print(f"Expected Upper Limit (Median) : {exp_limits[2]*yields['SIG']}")
-        print(f"Expected +1 Sigma             : {exp_limits[3]*yields['SIG']}")
-
-        print(f"Done.")
-        print(f"===============================================================")
-
-        rows.append({
-            "M_S": yields["M_S"],
-            "obs": obs_limit,
-            "exp-2s": exp_limits[0]*yields['SIG'],
-            "exp-1s": exp_limits[1]*yields['SIG'],
-            "exp_med": exp_limits[2]*yields['SIG'],
-            "exp+1s": exp_limits[3]*yields['SIG'],
-            "exp+2s": exp_limits[4]*yields['SIG'],
-        })
+    rows = sorted(rows, key=lambda x: x['M_S'])
 
     out = Path(output_path+"limits_asymptotic_results.csv")
     out.parent.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame(rows).to_csv(out, index=False)
+    results = pd.DataFrame(rows)
+    results.to_csv(out, index=False)
 
-    return LimitResult(
-        observed = float(obs_limit),
-        expected = np.asarray(exp_limits)*yields['SIG']
-    )
+    return results
 
 
 
-def run_limits_toybased(df_yields, df_uncrt, output_path, ntoys):
+def _run_limits_toybased_single(args):
     """
         Function that runs toy-based 95% Upper Limit scan.
 
@@ -356,176 +393,224 @@ def run_limits_toybased(df_yields, df_uncrt, output_path, ntoys):
             - Observed Upper Limit
             - Expected Upper Limit band array (-2s, -1s, median, +1s, +2s)
     """
+    yields, uncrt, toys = args
+
+    expected_bkg_total = sum([yields['BKG_JJH'], yields['BKG_WJ'], yields['BKG_QQ2GG']])
+    
+    model_dict = build_pyhf_model(yields, uncrt, expected_bkg_total)
+    workspace = pyhf.Workspace(model_dict)
+    model = workspace.model()
+
+    obs_data = workspace.data(model)
+
+    print(f"\n===============================================================")
+    print(f"Running toy-based Upper Limit computation for:")
+    print(f"M_S: {yields['M_S']} TeV")
+
+    obs_limit, exp_limits = pyhf.infer.intervals.upper_limits.upper_limit(
+        obs_data,
+        model,
+        scan = np.linspace(0, 10, 50),
+        test_stat = 'qtilde',
+        calctype = 'toybased',
+        ntoys = toys,
+        level = 0.05,
+    )
+
+    print(f"Done.")
+    print(f"===============================================================")
+
+    return {
+        "M_S": yields["M_S"],
+        "obs": obs_limit,
+        "exp-2s": exp_limits[0]*yields['SIG'],
+        "exp-1s": exp_limits[1]*yields['SIG'],
+        "exp_med": exp_limits[2]*yields['SIG'],
+        "exp+1s": exp_limits[3]*yields['SIG'],
+        "exp+2s": exp_limits[4]*yields['SIG']
+    }
+    
+
+
+def run_limits_toybased(df_yields, df_uncrt, output_path, toys):
+    """
+        Runs analysis across all mass points
+    """
     rows = []
 
+    tasks = []
     for i in range(len(df_yields)):
-        yields = df_yields.iloc[i].to_dict()
-        uncrt = df_uncrt.iloc[i].to_dict()
-        expected_bkg_total = sum([yields['BKG_JJH'], yields['BKG_WJ'], yields['BKG_QQ2GG']])
+        tasks.append((
+            df_yields.iloc[i].to_dict(),
+            df_uncrt.iloc[i].to_dict(),
+            toys
+        ))
 
-        model_dict = build_pyhf_model(yields, uncrt, expected_bkg_total)
-        workspace = pyhf.Workspace(model_dict)
-        model = workspace.model()
+    with concurrent.futures.ProcessPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
+        for result_dict in executor.map(_run_limits_toybased_single, tasks):
+            rows.append(result_dict)
 
-        obs_data = workspace.data(model)
-
-        print(f"\n===============================================================")
-        print(f"Running toy-based Upper Limit computation for:")
-        print(f"M_S: {yields['M_S']} TeV")
-
-        obs_limit, exp_limits = pyhf.infer.intervals.upper_limits.upper_limit(
-            obs_data,
-            model,
-            scan = np.linspace(0, 10, 50),
-            test_stat = 'qtilde',
-            calctype = 'toybased',
-            ntoys = ntoys,
-            level = 0.05,
-        )
-
-        print(f"Observed Upper Limit (Median) : {obs_limit}")
-        print(f"Expected -1 Sigma             : {exp_limits[1]*yields['SIG']}")
-        print(f"Expected Upper Limit (Median) : {exp_limits[2]*yields['SIG']}")
-        print(f"Expected +1 Sigma             : {exp_limits[3]*yields['SIG']}")
-
-        print(f"Done.")
-        print(f"===============================================================")
-
-        rows.append({
-                "M_S": yields["M_S"],
-                "obs": obs_limit,
-                "exp-2s": exp_limits[0]*yields['SIG'],
-                "exp-1s": exp_limits[1]*yields['SIG'],
-                "exp_med": exp_limits[2]*yields['SIG'],
-                "exp+1s": exp_limits[3]*yields['SIG'],
-                "exp+2s": exp_limits[4]*yields['SIG'],
-            })
+    rows = sorted(rows, key=lambda x: x['M_S'])
 
     out = Path(output_path+"limits_toybased_results.csv")
     out.parent.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame(rows).to_csv(out, index=False)
+    results = pd.DataFrame(rows)
+    results.to_csv(out, index=False)
 
-    return LimitResult(
-        observed = float(obs_limit),
-        expected = np.asarray(exp_limits)*yields['SIG']
-    )
+    return results
 
 
 
-def run_pval_asymptotics(df_yields, df_uncrt, output_path):
+def _run_pval_asymptotics_single(args):
     """
         Function that runs asymptotic p-value computation.
 
         Returns:    
             - Expected p-value
+            - Expected significance
+    """
+    yields, uncrt = args
+
+    expected_bkg_total = sum([yields['BKG_JJH'], yields['BKG_WJ'], yields['BKG_QQ2GG']])
+
+    model_dict = build_pyhf_model(yields, uncrt, expected_bkg_total)
+    workspace = pyhf.Workspace(model_dict)
+    model = workspace.model()
+
+    init_pars = model.config.suggested_init()
+    poi_index = model.config.poi_index
+    init_pars[poi_index] = 1.0
+
+    obs_data = model.expected_data(init_pars)
+
+    print(f"\n===============================================================")
+    print(f"Running asymptotic p-value computation for:")
+    print(f"M_S: {yields['M_S']} TeV")
+
+    p0_exp_tmp = pyhf.infer.hypotest(
+        0.0,
+        obs_data,
+        model,
+        test_stat='q0',
+        calctype='asymptotics'
+    )
+
+    p0_exp = float(p0_exp_tmp)
+
+    Z_exp = stats.norm.isf(p0_exp)
+
+    print(f"Done.")
+    print(f"===============================================================")
+    
+    return {
+        "M_S": yields["M_S"],
+        "p0_exp": p0_exp,
+        "Z_exp": Z_exp
+    }
+
+
+
+def run_pval_asymptotics(df_yields, df_uncrt, output_path):
+    """
+        Running analysis across all mass points
     """
     rows = []
 
+    tasks = []
     for i in range(len(df_yields)):
-        yields = df_yields.iloc[i].to_dict()
-        uncrt = df_uncrt.iloc[i].to_dict()
-        expected_bkg_total = sum([yields['BKG_JJH'], yields['BKG_WJ'], yields['BKG_QQ2GG']])
+        tasks.append((
+            df_yields.iloc[i].to_dict(),
+            df_uncrt.iloc[i].to_dict()
+        ))
 
-        model_dict = build_pyhf_model(yields, uncrt, expected_bkg_total)
-        workspace = pyhf.Workspace(model_dict)
-        model = workspace.model()
+    with concurrent.futures.ProcessPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
+        for result_dict in executor.map(_run_pval_asymptotics_single, tasks):
+            rows.append(result_dict)
 
-        init_pars = model.config.suggested_init()
-        poi_index = model.config.poi_index
-        init_pars[poi_index] = 1.0
-
-        obs_data = model.expected_data(init_pars)
-
-        print(f"\n===============================================================")
-        print(f"Running asymptotic p-value computation for:")
-        print(f"M_S: {yields['M_S']} TeV")
-
-        p0_exp_tmp = pyhf.infer.hypotest(
-            0.0,
-            obs_data,
-            model,
-            test_stat='q0',
-            calctype='asymptotics'
-        )
-
-        p0_exp = float(p0_exp_tmp)
-
-        Z_exp = stats.norm.isf(p0_exp)
-
-        # print(f"Observed p-value: {p0_obs:.3e} (Z = {Z_obs:.2f} sigma)")
-        print(f"Expected p-value: {p0_exp:.3e} (Z = {Z_exp:.2f} sigma)")
-
-        print(f"Done.")
-        print(f"===============================================================")
-
-        rows.append({
-            "M_S": yields["M_S"],
-            "p0_exp": p0_exp,
-            "Z_exp": Z_exp
-        })
+    rows = sorted(rows, key=lambda x: x['M_S'])
 
     out = Path(output_path+"pval_asymptotics_results.csv")
     out.parent.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame(rows).to_csv(out, index=False)
+    results = pd.DataFrame(rows)
+    results.to_csv(out, index=False)
 
-    return p0_exp
+    return results
 
 
 
-def run_pval_toybased(df_yields, df_uncrt, output_path, ntoys):
+def _run_pval_toybased_single(args):
     """
         Function that runs toy-based p-value computation.
 
         Returns:    
             - Expected p-value
+            - Expected significance 
+    """
+    yields, uncrt, toys = args
+
+    expected_bkg_total = sum([yields['BKG_JJH'], yields['BKG_WJ'], yields['BKG_QQ2GG']])
+    
+    model_dict = build_pyhf_model(yields, uncrt, expected_bkg_total)
+    workspace = pyhf.Workspace(model_dict)
+    model = workspace.model()
+
+    init_pars = model.config.suggested_init()
+    poi_index = model.config.poi_index
+    init_pars[poi_index] = 1.0
+
+    obs_data = model.expected_data(init_pars)
+
+    print(f"\n===============================================================")
+    print(f"Running toy-based p-value computation for:")
+    print(f"M_S: {yields['M_S']} TeV")
+
+    p0_exp_tmp = pyhf.infer.hypotest(
+        0.0,
+        obs_data,
+        model,
+        test_stat='q0',
+        calctype='toybased',
+        ntoys = toys
+    )
+
+    p0_exp = float(p0_exp_tmp)
+
+    Z_exp = stats.norm.isf(p0_exp)
+
+    print(f"Done.")
+    print(f"===============================================================")
+
+    return {
+        "M_S": yields["M_S"],
+        "p0_exp": p0_exp,
+        "Z_exp": Z_exp
+    }
+    
+
+
+def run_pval_toybased(df_yields, df_uncrt, output_path, toys):
+    """
+        Running analysis across all mass points
     """
     rows = []
 
+    tasks = []
     for i in range(len(df_yields)):
-        yields = df_yields.iloc[i].to_dict()
-        uncrt = df_uncrt.iloc[i].to_dict()
-        expected_bkg_total = sum([yields['BKG_JJH'], yields['BKG_WJ'], yields['BKG_QQ2GG']])
+        tasks.append((
+            df_yields.iloc[i].to_dict(),
+            df_uncrt.iloc[i].to_dict(),
+            toys
+        ))
 
-        model_dict = build_pyhf_model(yields, uncrt, expected_bkg_total)
-        workspace = pyhf.Workspace(model_dict)
-        model = workspace.model()
+    with concurrent.futures.ProcessPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
+        for result_dict in executor.map(_run_pval_toybased_single, tasks):
+            rows.append(result_dict)
 
-        init_pars = model.config.suggested_init()
-        poi_index = model.config.poi_index
-        init_pars[poi_index] = 1.0
-
-        obs_data = model.expected_data(init_pars)
-
-        print(f"\n===============================================================")
-        print(f"Running toy-based p-value computation for:")
-        print(f"M_S: {yields['M_S']} TeV")
-
-        p0_exp_tmp = pyhf.infer.hypotest(
-            0.0,
-            obs_data,
-            model,
-            test_stat='q0',
-            calctype='toybased',
-            ntoys = ntoys
-        )
-
-        p0_exp = float(p0_exp_tmp)
-
-        Z_exp = stats.norm.isf(p0_exp)
-
-        print(f"Expected p-value: {p0_exp:.3e} (Z = {Z_exp:.2f} sigma)")
-
-        print(f"Done.")
-        print(f"===============================================================")
-
-        rows.append({
-            "M_S": yields["M_S"],
-            "p0_exp": p0_exp,
-            "Z_exp": Z_exp
-        })
+    rows = sorted(rows, key=lambda x: x['M_S'])
 
     out = Path(output_path+"pval_toybased_results.csv")
     out.parent.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame(rows).to_csv(out, index=False)
+    results = pd.DataFrame(rows)
+    results.to_csv(out, index=False)
 
-    return p0_exp
+    return results
